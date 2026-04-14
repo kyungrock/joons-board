@@ -399,6 +399,7 @@
           name: file.name || "image",
           dataUrl: String(reader.result || ""),
           createdAt: Date.now(),
+          updatedAt: Date.now(),
         });
         pending--;
         if (pending <= 0) {
@@ -635,11 +636,117 @@
     if (!silent) toast("클라우드에 저장했습니다");
   }
 
+  async function cloudSaveMyFiles(silent) {
+    if (!cloudClient || !cloudUser) {
+      if (!silent) toast("클라우드 로그인 후 파일 동기화 가능합니다");
+      return;
+    }
+    const folders = getMyFileFolders();
+    const files = getMyFiles();
+    const folderRows = folders.map((f) => ({
+      user_id: cloudUser.id,
+      folder_id: f.id,
+      name: f.name,
+      updated_at: new Date().toISOString(),
+    }));
+    const assetRows = files.map((x) => ({
+      user_id: cloudUser.id,
+      asset_id: x.id,
+      folder_id: x.folderId || DEFAULT_FOLDER_ID,
+      name: x.name || "image",
+      data_url: x.dataUrl || "",
+      created_at: new Date(x.createdAt || Date.now()).toISOString(),
+      updated_at: new Date(x.updatedAt || x.createdAt || Date.now()).toISOString(),
+    }));
+
+    if (folderRows.length) {
+      const { error } = await cloudClient
+        .from("joons_asset_folders")
+        .upsert(folderRows, { onConflict: "user_id,folder_id" });
+      if (error) {
+        if (!silent) toast("파일 폴더 동기화 실패: " + error.message);
+        return;
+      }
+    }
+    if (assetRows.length) {
+      const { error } = await cloudClient
+        .from("joons_assets")
+        .upsert(assetRows, { onConflict: "user_id,asset_id" });
+      if (error) {
+        if (!silent) toast("업로드 파일 동기화 실패: " + error.message);
+        return;
+      }
+    }
+    if (!silent) toast("내 파일을 클라우드에 동기화했습니다");
+  }
+
+  async function cloudPullMyFiles(silent) {
+    if (!cloudClient || !cloudUser) {
+      if (!silent) toast("클라우드 로그인 후 파일 불러오기 가능합니다");
+      return;
+    }
+    const [folderRes, assetRes] = await Promise.all([
+      cloudClient
+        .from("joons_asset_folders")
+        .select("folder_id,name,updated_at")
+        .eq("user_id", cloudUser.id)
+        .order("updated_at", { ascending: false })
+        .limit(500),
+      cloudClient
+        .from("joons_assets")
+        .select("asset_id,folder_id,name,data_url,created_at,updated_at")
+        .eq("user_id", cloudUser.id)
+        .order("updated_at", { ascending: false })
+        .limit(2000),
+    ]);
+    if (folderRes.error) {
+      if (!silent) toast("클라우드 폴더 불러오기 실패: " + folderRes.error.message);
+      return;
+    }
+    if (assetRes.error) {
+      if (!silent) toast("클라우드 파일 불러오기 실패: " + assetRes.error.message);
+      return;
+    }
+
+    const localFolders = getMyFileFolders();
+    const folderMap = new Map(localFolders.map((f) => [f.id, f]));
+    (folderRes.data || []).forEach((f) => {
+      if (!f || !f.folder_id) return;
+      folderMap.set(String(f.folder_id), {
+        id: String(f.folder_id),
+        name: String(f.name || "폴더"),
+      });
+    });
+    if (!folderMap.has(DEFAULT_FOLDER_ID)) {
+      folderMap.set(DEFAULT_FOLDER_ID, { id: DEFAULT_FOLDER_ID, name: "전체" });
+    }
+    setMyFileFolders(Array.from(folderMap.values()));
+
+    const localFiles = getMyFiles();
+    const fileMap = new Map(localFiles.map((f) => [f.id, f]));
+    (assetRes.data || []).forEach((x) => {
+      if (!x || !x.asset_id || !x.data_url) return;
+      fileMap.set(String(x.asset_id), {
+        id: String(x.asset_id),
+        folderId: String(x.folder_id || DEFAULT_FOLDER_ID),
+        name: String(x.name || "image"),
+        dataUrl: String(x.data_url),
+        createdAt: x.created_at ? Date.parse(x.created_at) : Date.now(),
+        updatedAt: x.updated_at ? Date.parse(x.updated_at) : Date.now(),
+      });
+    });
+    setMyFiles(Array.from(fileMap.values()));
+    renderMyFileFolders();
+    renderMyFiles();
+    if (!silent) toast(`클라우드 파일 ${(assetRes.data || []).length}개를 반영했습니다`);
+  }
+
   async function cloudSaveCurrent() {
     syncCurrentSlideState();
     const payload = getPayloadFromCurrentState();
     mergeLocalWork(payload);
     await cloudSavePayload(payload, false);
+    await cloudSaveMyFiles(true);
   }
 
   async function cloudPullAll() {
@@ -668,6 +775,7 @@
     renderWorkList();
     renderWorkBrowser();
     toast(`클라우드에서 ${(data || []).length}개 작업을 반영했습니다`);
+    await cloudPullMyFiles(true);
   }
 
   function getFolders() {
