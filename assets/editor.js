@@ -4,6 +4,9 @@
   const THEME_KEY = "canvaskit_theme";
   const WORK_KEY = "canvaskit_my_work_v1";
   const WORK_FOLDER_KEY = "canvaskit_my_work_folders_v1";
+  const MY_FILE_KEY = "joons_my_files_v1";
+  const MY_FILE_FOLDER_KEY = "joons_my_file_folders_v1";
+  const CLOUD_CFG_KEY = "joons_cloud_cfg_v1";
   const DEFAULT_FOLDER_ID = "folder-all";
   const EMPTY_THUMB =
     "data:image/svg+xml;utf8," +
@@ -162,6 +165,9 @@
   let currentWorkId = null;
   let currentFolderId = DEFAULT_FOLDER_ID;
   let browserFolderId = DEFAULT_FOLDER_ID;
+  let myFileFolderId = DEFAULT_FOLDER_ID;
+  let cloudClient = null;
+  let cloudUser = null;
   let slides = [];
   let currentSlideIndex = 0;
   const thumbGenerating = new Set();
@@ -253,6 +259,415 @@
 
   function setWorks(arr) {
     localStorage.setItem(WORK_KEY, JSON.stringify(arr));
+  }
+
+  function getMyFileFolders() {
+    try {
+      const raw = localStorage.getItem(MY_FILE_FOLDER_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      const list = Array.isArray(arr) ? arr : [];
+      if (!list.some((x) => x && x.id === DEFAULT_FOLDER_ID)) {
+        list.unshift({ id: DEFAULT_FOLDER_ID, name: "전체" });
+      }
+      return list
+        .filter((x) => x && x.id && x.name)
+        .map((x) => ({ id: String(x.id), name: String(x.name) }));
+    } catch {
+      return [{ id: DEFAULT_FOLDER_ID, name: "전체" }];
+    }
+  }
+
+  function setMyFileFolders(arr) {
+    localStorage.setItem(MY_FILE_FOLDER_KEY, JSON.stringify(arr));
+  }
+
+  function getMyFiles() {
+    try {
+      const raw = localStorage.getItem(MY_FILE_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function setMyFiles(arr) {
+    localStorage.setItem(MY_FILE_KEY, JSON.stringify(arr));
+  }
+
+  function renderMyFileFolders() {
+    const root = document.getElementById("my-folder-row");
+    if (!root) return;
+    const folders = getMyFileFolders();
+    if (!folders.some((f) => f.id === myFileFolderId)) myFileFolderId = DEFAULT_FOLDER_ID;
+    root.innerHTML = "";
+    folders.forEach((f) => {
+      const count = f.id === DEFAULT_FOLDER_ID
+        ? getMyFiles().length
+        : getMyFiles().filter((x) => x.folderId === f.id).length;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "my-folder-btn" + (myFileFolderId === f.id ? " active" : "");
+      b.textContent = `${f.name} ${count}`;
+      b.addEventListener("click", () => {
+        myFileFolderId = f.id;
+        renderMyFileFolders();
+        renderMyFiles();
+      });
+      root.appendChild(b);
+    });
+  }
+
+  function addMyFileToCanvas(src) {
+    if (!src) return;
+    fabric.Image.fromURL(src, (img) => {
+      if (!img) return;
+      const maxW = Math.min(logicalW * 0.7, 680);
+      if (img.width > maxW) img.scaleToWidth(maxW);
+      img.set({
+        left: logicalW / 2,
+        top: logicalH / 2,
+        originX: "center",
+        originY: "center",
+      });
+      finalizeAdd(img);
+      setTool("select");
+    });
+  }
+
+  function renderMyFiles() {
+    const root = document.getElementById("my-file-grid");
+    if (!root) return;
+    root.innerHTML = "";
+    const all = getMyFiles().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const rows =
+      myFileFolderId === DEFAULT_FOLDER_ID ? all : all.filter((x) => x.folderId === myFileFolderId);
+    if (!rows.length) {
+      root.innerHTML = `<div class="icon-status">업로드된 파일이 없습니다</div>`;
+      return;
+    }
+    rows.slice(0, 240).forEach((f) => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "my-file-item";
+      card.innerHTML = `<img src="${f.dataUrl}" alt="${f.name || "file"}" loading="lazy" /><span>${f.name || "파일"}</span>`;
+      card.addEventListener("click", () => addMyFileToCanvas(f.dataUrl));
+      root.appendChild(card);
+    });
+  }
+
+  function createMyFileFolder() {
+    const raw = prompt("새 폴더 이름");
+    if (raw == null) return;
+    const name = raw.trim();
+    if (!name) {
+      toast("폴더 이름을 입력해주세요");
+      return;
+    }
+    const folders = getMyFileFolders();
+    if (folders.some((f) => f.name === name)) {
+      toast("같은 폴더 이름이 이미 있습니다");
+      return;
+    }
+    const id = "myf-" + Date.now() + "-" + Math.random().toString(16).slice(2, 6);
+    folders.push({ id, name });
+    setMyFileFolders(folders);
+    myFileFolderId = id;
+    renderMyFileFolders();
+    renderMyFiles();
+    toast("새 폴더를 만들었습니다");
+  }
+
+  function handleMyFileUpload(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const current = getMyFiles();
+    let pending = files.length;
+    files.forEach((file) => {
+      if (!file.type || !file.type.startsWith("image/")) {
+        pending--;
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        current.push({
+          id:
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : "mf-" + Date.now() + "-" + Math.random().toString(16).slice(2),
+          folderId: myFileFolderId || DEFAULT_FOLDER_ID,
+          name: file.name || "image",
+          dataUrl: String(reader.result || ""),
+          createdAt: Date.now(),
+        });
+        pending--;
+        if (pending <= 0) {
+          setMyFiles(current);
+          renderMyFileFolders();
+          renderMyFiles();
+          toast("내 파일에 업로드했습니다");
+        }
+      };
+      reader.onerror = () => {
+        pending--;
+        if (pending <= 0) {
+          setMyFiles(current);
+          renderMyFileFolders();
+          renderMyFiles();
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function initMyFilesPanel() {
+    const up = document.getElementById("my-file-upload");
+    const addFolderBtn = document.getElementById("my-file-new-folder");
+    if (up) {
+      up.addEventListener("change", (e) => {
+        handleMyFileUpload(e.target.files);
+        e.target.value = "";
+      });
+    }
+    if (addFolderBtn) addFolderBtn.addEventListener("click", createMyFileFolder);
+    renderMyFileFolders();
+    renderMyFiles();
+  }
+
+  function getCloudCfg() {
+    try {
+      const raw = localStorage.getItem(CLOUD_CFG_KEY);
+      const cfg = raw ? JSON.parse(raw) : {};
+      return {
+        url: cfg && cfg.url ? String(cfg.url) : "",
+        anon: cfg && cfg.anon ? String(cfg.anon) : "",
+      };
+    } catch {
+      return { url: "", anon: "" };
+    }
+  }
+
+  function setCloudCfg(cfg) {
+    localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify({ url: cfg.url || "", anon: cfg.anon || "" }));
+  }
+
+  function setCloudStatus(msg) {
+    const el = document.getElementById("cloud-status");
+    if (el) el.textContent = msg;
+  }
+
+  function getCloudEmailPass() {
+    return {
+      email: (document.getElementById("cloud-email").value || "").trim(),
+      password: document.getElementById("cloud-password").value || "",
+    };
+  }
+
+  function getPayloadFromCurrentState() {
+    const nameInput = document.getElementById("project-name");
+    const folderSel = document.getElementById("project-folder");
+    const selectedFolder =
+      folderSel && folderSel.value ? folderSel.value : currentFolderId || DEFAULT_FOLDER_ID;
+    const name =
+      (nameInput.value || "").trim() ||
+      "작업 " + new Date().toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" });
+    const id =
+      currentWorkId ||
+      (typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : "w-" + Date.now() + "-" + Math.random().toString(16).slice(2));
+    return {
+      id,
+      name,
+      updatedAt: Date.now(),
+      presetId: lastPresetId,
+      canvasW: logicalW,
+      canvasH: logicalH,
+      bg: document.getElementById("canvas-bg").value,
+      folderId: selectedFolder,
+      thumb: buildWorkThumbnail(),
+      json: snapshotJson(),
+      slides: slides.map((s) => Object.assign({}, s)),
+      currentSlideIndex: currentSlideIndex,
+    };
+  }
+
+  function mergeLocalWork(payload) {
+    let list = getWorks();
+    const idx = list.findIndex((x) => x.id === payload.id);
+    if (idx >= 0) list[idx] = payload;
+    else list.push(payload);
+    setWorks(list);
+    currentWorkId = payload.id;
+    document.getElementById("project-name").value = payload.name || "";
+    renderFolderSelect();
+    renderWorkList();
+    renderWorkBrowser();
+  }
+
+  function initCloudClient() {
+    const cfg = getCloudCfg();
+    if (!cfg.url || !cfg.anon || !window.supabase || !window.supabase.createClient) return null;
+    cloudClient = window.supabase.createClient(cfg.url, cfg.anon);
+    return cloudClient;
+  }
+
+  async function refreshCloudSession() {
+    if (!cloudClient) return;
+    try {
+      const { data } = await cloudClient.auth.getSession();
+      cloudUser = data && data.session ? data.session.user : null;
+      setCloudStatus(cloudUser ? `로그인됨: ${cloudUser.email || cloudUser.id}` : "클라우드 연결됨 (로그인 필요)");
+    } catch {
+      setCloudStatus("클라우드 세션 확인 실패");
+    }
+  }
+
+  async function connectCloud() {
+    const url = (document.getElementById("cloud-url").value || "").trim();
+    const anon = (document.getElementById("cloud-anon").value || "").trim();
+    if (!url || !anon) {
+      toast("Supabase URL/Key를 입력해주세요");
+      return;
+    }
+    setCloudCfg({ url, anon });
+    initCloudClient();
+    if (!cloudClient) {
+      toast("Supabase 클라이언트 초기화 실패");
+      return;
+    }
+    await refreshCloudSession();
+    toast("클라우드 연결 설정을 저장했습니다");
+  }
+
+  async function cloudSignUp() {
+    if (!cloudClient) {
+      toast("먼저 클라우드 연결을 해주세요");
+      return;
+    }
+    const { email, password } = getCloudEmailPass();
+    if (!email || !password) {
+      toast("이메일/비밀번호를 입력해주세요");
+      return;
+    }
+    const { error } = await cloudClient.auth.signUp({ email, password });
+    if (error) {
+      const msg = String(error.message || "").toLowerCase();
+      if (msg.includes("rate limit")) {
+        const loginTry = await cloudClient.auth.signInWithPassword({ email, password });
+        if (!loginTry.error) {
+          await refreshCloudSession();
+          toast("가입 제한으로 로그인으로 전환했습니다");
+          return;
+        }
+        toast("가입 요청 제한 상태입니다. 잠시 후 다시 시도하거나 로그인 버튼을 눌러보세요");
+        return;
+      }
+      toast("회원가입 실패: " + error.message);
+      return;
+    }
+    await refreshCloudSession();
+    toast("회원가입 요청 완료 (이메일 인증 필요할 수 있음)");
+  }
+
+  async function cloudLogin() {
+    if (!cloudClient) {
+      toast("먼저 클라우드 연결을 해주세요");
+      return;
+    }
+    const { email, password } = getCloudEmailPass();
+    if (!email || !password) {
+      toast("이메일/비밀번호를 입력해주세요");
+      return;
+    }
+    const { error } = await cloudClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      toast("로그인 실패: " + error.message);
+      return;
+    }
+    await refreshCloudSession();
+    toast("로그인했습니다");
+  }
+
+  async function cloudLogout() {
+    if (!cloudClient) return;
+    await cloudClient.auth.signOut();
+    cloudUser = null;
+    setCloudStatus("클라우드 연결됨 (로그인 필요)");
+    toast("로그아웃했습니다");
+  }
+
+  async function cloudSavePayload(payload, silent) {
+    if (!cloudClient || !cloudUser) {
+      if (!silent) toast("클라우드 로그인 후 저장 가능합니다");
+      return;
+    }
+    const row = {
+      user_id: cloudUser.id,
+      project_id: payload.id,
+      name: payload.name,
+      folder_id: payload.folderId || DEFAULT_FOLDER_ID,
+      payload_json: payload,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: selErr, data: found } = await cloudClient
+      .from("joons_projects")
+      .select("id")
+      .eq("user_id", cloudUser.id)
+      .eq("project_id", payload.id)
+      .limit(1);
+    if (selErr) {
+      if (!silent) toast("클라우드 저장 실패: 테이블/권한 설정 확인");
+      return;
+    }
+    let err = null;
+    if (found && found.length) {
+      const { error } = await cloudClient.from("joons_projects").update(row).eq("id", found[0].id);
+      err = error;
+    } else {
+      const { error } = await cloudClient.from("joons_projects").insert(row);
+      err = error;
+    }
+    if (err) {
+      if (!silent) toast("클라우드 저장 실패: " + err.message);
+      return;
+    }
+    if (!silent) toast("클라우드에 저장했습니다");
+  }
+
+  async function cloudSaveCurrent() {
+    syncCurrentSlideState();
+    const payload = getPayloadFromCurrentState();
+    mergeLocalWork(payload);
+    await cloudSavePayload(payload, false);
+  }
+
+  async function cloudPullAll() {
+    if (!cloudClient || !cloudUser) {
+      toast("클라우드 로그인 후 불러올 수 있습니다");
+      return;
+    }
+    const { data, error } = await cloudClient
+      .from("joons_projects")
+      .select("payload_json, updated_at")
+      .eq("user_id", cloudUser.id)
+      .order("updated_at", { ascending: false })
+      .limit(500);
+    if (error) {
+      toast("클라우드 불러오기 실패: " + error.message);
+      return;
+    }
+    const list = getWorks();
+    const byId = new Map(list.map((x) => [x.id, x]));
+    (data || []).forEach((row) => {
+      const p = row && row.payload_json ? row.payload_json : null;
+      if (!p || !p.id) return;
+      byId.set(p.id, p);
+    });
+    setWorks(Array.from(byId.values()));
+    renderWorkList();
+    renderWorkBrowser();
+    toast(`클라우드에서 ${(data || []).length}개 작업을 반영했습니다`);
   }
 
   function getFolders() {
@@ -828,43 +1243,10 @@
 
   function saveCurrentProject() {
     syncCurrentSlideState();
-    const nameInput = document.getElementById("project-name");
-    const folderSel = document.getElementById("project-folder");
-    const selectedFolder =
-      folderSel && folderSel.value ? folderSel.value : currentFolderId || DEFAULT_FOLDER_ID;
-    currentFolderId = selectedFolder;
-    const name =
-      (nameInput.value || "").trim() ||
-      "작업 " + new Date().toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" });
-    const id =
-      currentWorkId ||
-      (typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : "w-" + Date.now() + "-" + Math.random().toString(16).slice(2));
-    const payload = {
-      id,
-      name,
-      updatedAt: Date.now(),
-      presetId: lastPresetId,
-      canvasW: logicalW,
-      canvasH: logicalH,
-      bg: document.getElementById("canvas-bg").value,
-      folderId: selectedFolder,
-      thumb: buildWorkThumbnail(),
-      json: snapshotJson(),
-      slides: slides.map((s) => Object.assign({}, s)),
-      currentSlideIndex: currentSlideIndex,
-    };
-    let list = getWorks();
-    const idx = list.findIndex((x) => x.id === id);
-    if (idx >= 0) list[idx] = payload;
-    else list.push(payload);
-    currentWorkId = id;
-    nameInput.value = payload.name;
-    setWorks(list);
-    renderFolderSelect();
-    renderWorkList();
-    renderWorkBrowser();
+    const payload = getPayloadFromCurrentState();
+    currentFolderId = payload.folderId || currentFolderId;
+    mergeLocalWork(payload);
+    cloudSavePayload(payload, true);
     toast("나의 작업에 저장했습니다");
   }
 
@@ -3674,6 +4056,17 @@
   function init() {
     initTheme();
     document.getElementById("btn-theme").addEventListener("click", toggleTheme);
+    const cloudCfg = getCloudCfg();
+    document.getElementById("cloud-url").value = cloudCfg.url || "";
+    document.getElementById("cloud-anon").value = cloudCfg.anon || "";
+    initCloudClient();
+    if (cloudClient) {
+      refreshCloudSession();
+      cloudClient.auth.onAuthStateChange(() => {
+        refreshCloudSession();
+      });
+    }
+    else setCloudStatus("클라우드 미연결");
 
     canvas = new fabric.Canvas("design-canvas", {
       preserveObjectStacking: true,
@@ -3733,6 +4126,12 @@
     document.getElementById("btn-slide-move-prev").addEventListener("click", () => moveSlideOrder(-1));
     document.getElementById("btn-slide-move-next").addEventListener("click", () => moveSlideOrder(1));
     document.getElementById("btn-apply-slide-size").addEventListener("click", applyCustomSlideSize);
+    document.getElementById("cloud-connect").addEventListener("click", connectCloud);
+    document.getElementById("cloud-signup").addEventListener("click", cloudSignUp);
+    document.getElementById("cloud-login").addEventListener("click", cloudLogin);
+    document.getElementById("cloud-logout").addEventListener("click", cloudLogout);
+    document.getElementById("cloud-save-now").addEventListener("click", cloudSaveCurrent);
+    document.getElementById("cloud-pull").addEventListener("click", cloudPullAll);
     document.getElementById("btn-open-work-browser").addEventListener("click", openWorkBrowser);
     document.getElementById("work-title-click").addEventListener("click", openWorkBrowser);
     document.getElementById("work-browser-close").addEventListener("click", closeWorkBrowser);
@@ -3756,6 +4155,7 @@
 
     initWordArtButtons();
     initIconSearch();
+    initMyFilesPanel();
     ensureFolders();
     renderFolderSelect();
     renderWorkList();

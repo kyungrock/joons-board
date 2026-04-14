@@ -433,6 +433,49 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.cloud-box {
+  margin-top: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem;
+  background: var(--surface-2);
+}
+
+.cloud-title {
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted);
+  list-style: none;
+}
+
+.cloud-title::-webkit-details-marker {
+  display: none;
+}
+
+.cloud-auth-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+  margin-bottom: 0.35rem;
+}
+
+.cloud-actions {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+.cloud-actions .btn {
+  flex: 1;
+}
+
+.cloud-status {
+  margin: 0.1rem 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
 .work-browser {
   position: fixed;
   inset: 0;
@@ -809,6 +852,67 @@ body {
 .icon-item img {
   width: 20px;
   height: 20px;
+}
+
+.my-folder-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  margin-bottom: 0.38rem;
+}
+
+.my-folder-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.68rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.my-folder-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.my-file-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.32rem;
+  max-height: 170px;
+  overflow-y: auto;
+}
+
+.my-file-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.my-file-item:hover {
+  border-color: var(--accent);
+}
+
+.my-file-item img {
+  width: 100%;
+  height: 60px;
+  object-fit: cover;
+  display: block;
+  background: #e2e8f0;
+}
+
+.my-file-item span {
+  display: block;
+  font-size: 0.62rem;
+  color: var(--muted);
+  padding: 0.18rem 0.24rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tool-grid-basic {
