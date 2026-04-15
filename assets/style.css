@@ -290,10 +290,7 @@ body {
   display: flex;
   flex: 1;
   min-height: 0;
-  height: calc(100dvh - var(--top-h));
-  max-height: calc(100dvh - var(--top-h));
   align-items: stretch;
-  overflow: hidden;
 }
 
 .editor-rail {
@@ -1561,10 +1558,9 @@ body {
   align-self: stretch;
   background: var(--surface);
   border-left: 1px solid var(--border);
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable both-edges;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .slide-stack-title {
@@ -1575,6 +1571,7 @@ body {
   border-bottom: 1px solid var(--border);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  flex-shrink: 0;
   position: sticky;
   top: 0;
   z-index: 3;
@@ -1582,6 +1579,13 @@ body {
 }
 
 .slide-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable both-edges;
   padding: 0.55rem;
   display: grid;
   grid-auto-rows: max-content;

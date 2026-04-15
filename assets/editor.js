@@ -414,6 +414,10 @@
   let historyStep = -1;
   const MAX_HISTORY = 35;
   let historyTimer = null;
+  const KEY_MOVE_STEP = 1;
+  const KEY_MOVE_STEP_FAST = 10;
+  const ALIGN_SNAP_TOLERANCE = 6;
+  const ALIGN_GUIDE_COLOR = "rgba(99,102,241,0.78)";
 
   const PRESETS = [
     { id: "ig", w: 1080, h: 1080, label: "인스타 · 정사각 1080" },
@@ -1242,24 +1246,144 @@
     });
   }
 
+  function clearAlignmentGuides(targetCanvas = canvas) {
+    if (!targetCanvas || !targetCanvas.contextTop) return;
+    targetCanvas.clearContext(targetCanvas.contextTop);
+  }
+
+  function drawAlignmentGuides(targetCanvas, guides) {
+    if (!targetCanvas || !targetCanvas.contextTop) return;
+    clearAlignmentGuides(targetCanvas);
+    if (!guides || !guides.length) return;
+    const w = targetCanvas.getWidth();
+    const h = targetCanvas.getHeight();
+    const ctx = targetCanvas.contextTop;
+    ctx.save();
+    ctx.strokeStyle = ALIGN_GUIDE_COLOR;
+    ctx.lineWidth = 1;
+    guides.forEach((g) => {
+      if (g.axis === "x") {
+        ctx.beginPath();
+        ctx.moveTo(g.pos + 0.5, 0);
+        ctx.lineTo(g.pos + 0.5, h);
+        ctx.stroke();
+      } else if (g.axis === "y") {
+        ctx.beginPath();
+        ctx.moveTo(0, g.pos + 0.5);
+        ctx.lineTo(w, g.pos + 0.5);
+        ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+
+  function getObjectBounds(obj) {
+    if (!obj || typeof obj.getBoundingRect !== "function") return null;
+    obj.setCoords();
+    const br = obj.getBoundingRect(true, true);
+    if (!br) return null;
+    return {
+      left: br.left,
+      top: br.top,
+      right: br.left + br.width,
+      bottom: br.top + br.height,
+      cx: br.left + br.width / 2,
+      cy: br.top + br.height / 2,
+    };
+  }
+
+  function applyAlignmentGuideAndSnap(targetCanvas, target) {
+    if (!targetCanvas || !target || target.type === "activeSelection") {
+      clearAlignmentGuides(targetCanvas);
+      return;
+    }
+    const b = getObjectBounds(target);
+    if (!b) return;
+    const xLines = [b.left, b.cx, b.right];
+    const yLines = [b.top, b.cy, b.bottom];
+    let bestDx = ALIGN_SNAP_TOLERANCE + 1;
+    let bestDy = ALIGN_SNAP_TOLERANCE + 1;
+    let shiftX = 0;
+    let shiftY = 0;
+    let guideX = null;
+    let guideY = null;
+
+    function considerX(val) {
+      for (let i = 0; i < xLines.length; i++) {
+        const delta = val - xLines[i];
+        const ad = Math.abs(delta);
+        if (ad < bestDx && ad <= ALIGN_SNAP_TOLERANCE) {
+          bestDx = ad;
+          shiftX = delta;
+          guideX = val;
+        }
+      }
+    }
+
+    function considerY(val) {
+      for (let i = 0; i < yLines.length; i++) {
+        const delta = val - yLines[i];
+        const ad = Math.abs(delta);
+        if (ad < bestDy && ad <= ALIGN_SNAP_TOLERANCE) {
+          bestDy = ad;
+          shiftY = delta;
+          guideY = val;
+        }
+      }
+    }
+
+    considerX(targetCanvas.getWidth() / 2);
+    considerY(targetCanvas.getHeight() / 2);
+    targetCanvas.getObjects().forEach((obj) => {
+      if (!obj || obj === target || !obj.visible) return;
+      const ob = getObjectBounds(obj);
+      if (!ob) return;
+      considerX(ob.left);
+      considerX(ob.cx);
+      considerX(ob.right);
+      considerY(ob.top);
+      considerY(ob.cy);
+      considerY(ob.bottom);
+    });
+
+    if (guideX != null || guideY != null) {
+      const c = target.getCenterPoint();
+      target.setPositionByOrigin(
+        new fabric.Point(c.x + shiftX, c.y + shiftY),
+        "center",
+        "center"
+      );
+      target.setCoords();
+      targetCanvas.requestRenderAll();
+    }
+    const guides = [];
+    if (guideX != null) guides.push({ axis: "x", pos: guideX });
+    if (guideY != null) guides.push({ axis: "y", pos: guideY });
+    drawAlignmentGuides(targetCanvas, guides);
+  }
+
   function bindFabricCanvasListeners(fc, slideIdx) {
     fc.on("selection:created", () => {
       if (fc !== canvas) return;
+      clearAlignmentGuides(fc);
       updateInspector();
       updateLayers();
     });
     fc.on("selection:updated", () => {
       if (fc !== canvas) return;
+      clearAlignmentGuides(fc);
       updateInspector();
       updateLayers();
     });
     fc.on("selection:cleared", () => {
       if (fc !== canvas) return;
+      clearAlignmentGuides(fc);
       updateInspector();
       updateLayers();
     });
     fc.on("object:modified", (e) => {
       if (fc !== canvas) return;
+      clearAlignmentGuides(fc);
       if (e.target && e.target.type === "image") {
         tryClipImageToFrame(e.target);
       }
@@ -1267,9 +1391,14 @@
       updateLayers();
       updateInspector();
     });
-    fc.on("object:moving", () => {
+    fc.on("object:moving", (e) => {
       if (fc !== canvas) return;
+      if (e && e.target) applyAlignmentGuideAndSnap(fc, e.target);
       updateLayers();
+    });
+    fc.on("mouse:up", () => {
+      if (fc !== canvas) return;
+      clearAlignmentGuides(fc);
     });
     fc.on("text:changed", () => {
       if (fc !== canvas) return;
@@ -5206,6 +5335,31 @@
             e.preventDefault();
             pasteFromCanvasClipboard();
           }
+        }
+      }
+
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const key = e.key;
+        const arrows = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+        if (arrows.includes(key)) {
+          const o = canvas.getActiveObject();
+          if (!o) return;
+          if (o.type === "i-text" && o.isEditing) return;
+          e.preventDefault();
+          const step = e.shiftKey ? KEY_MOVE_STEP_FAST : KEY_MOVE_STEP;
+          const dx = key === "ArrowLeft" ? -step : key === "ArrowRight" ? step : 0;
+          const dy = key === "ArrowUp" ? -step : key === "ArrowDown" ? step : 0;
+          o.set({
+            left: (o.left || 0) + dx,
+            top: (o.top || 0) + dy,
+          });
+          o.setCoords();
+          clearAlignmentGuides(canvas);
+          canvas.requestRenderAll();
+          scheduleHistory();
+          updateLayers();
+          updateInspector();
+          return;
         }
       }
 
