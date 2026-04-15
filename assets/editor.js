@@ -405,6 +405,8 @@
   let cloudUser = null;
   let slides = [];
   let currentSlideIndex = 0;
+  let slideFabrics = [];
+  let domListenersAttached = false;
   const thumbGenerating = new Set();
   let slideThumbTimer = null;
   let restoring = false;
@@ -461,6 +463,43 @@
     { v: "Single Day", l: "Single Day" },
     { v: "Dongle", l: "Dongle" },
     { v: "Black And White Picture", l: "Black And White Picture" },
+    { v: "Gothic A1", l: "Gothic A1" },
+    { v: "Song Myung", l: "Song Myung" },
+    { v: "Stylish", l: "Stylish" },
+    { v: "Yeon Sung", l: "Yeon Sung" },
+    { v: "Kirang Haerang", l: "Kirang Haerang" },
+    { v: "East Sea Dokdo", l: "East Sea Dokdo" },
+    { v: "Nanum Brush Script", l: "Nanum Brush Script" },
+    { v: "Diphylleia", l: "Diphylleia" },
+    { v: "Bagel Fat One", l: "Bagel Fat One" },
+    { v: "Dokdo", l: "Dokdo" },
+    { v: "Bungee", l: "Bungee" },
+    { v: "Righteous", l: "Righteous" },
+    { v: "Russo One", l: "Russo One" },
+    { v: "Squada One", l: "Squada One" },
+    { v: "Teko", l: "Teko" },
+    { v: "Alumni Sans", l: "Alumni Sans" },
+    { v: "Raleway", l: "Raleway" },
+    { v: "Source Sans 3", l: "Source Sans 3" },
+    { v: "Source Serif 4", l: "Source Serif 4" },
+    { v: "Libre Baskerville", l: "Libre Baskerville" },
+    { v: "Manrope", l: "Manrope" },
+    { v: "Space Grotesk", l: "Space Grotesk" },
+    { v: "Outfit", l: "Outfit" },
+    { v: "Lexend", l: "Lexend" },
+    { v: "Dancing Script", l: "Dancing Script" },
+    { v: "Satisfy", l: "Satisfy" },
+    { v: "Lobster", l: "Lobster" },
+    { v: "Permanent Marker", l: "Permanent Marker" },
+    { v: "Barlow", l: "Barlow" },
+    { v: "Open Sans", l: "Open Sans" },
+    { v: "Mulish", l: "Mulish" },
+    { v: "Quicksand", l: "Quicksand" },
+    { v: "Urbanist", l: "Urbanist" },
+    { v: "Figtree", l: "Figtree" },
+    { v: "Syne", l: "Syne" },
+    { v: "Work Sans", l: "Work Sans" },
+    { v: "Kanit", l: "Kanit" },
     { v: "Georgia, serif", l: "Georgia" },
     { v: "Impact, sans-serif", l: "Impact" },
     { v: "Times New Roman, serif", l: "Times New Roman" },
@@ -805,6 +844,7 @@
   }
 
   function getPayloadFromCurrentState() {
+    syncAllSlidesFromFabric();
     const nameInput = document.getElementById("project-name");
     const folderSel = document.getElementById("project-folder");
     const selectedFolder =
@@ -1154,6 +1194,240 @@
     return works.filter((w) => w.folderId === folderId);
   }
 
+  function newSlideId() {
+    return typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : "s-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+  }
+
+  function disposeSlideFabrics() {
+    slideFabrics.forEach((fc) => {
+      if (fc && typeof fc.dispose === "function") {
+        try {
+          fc.dispose();
+        } catch (e) {}
+      }
+    });
+    slideFabrics = [];
+  }
+
+  function updateCanvasSlideInteractionState() {
+    document.querySelectorAll("[data-slide-index]").forEach((el) => {
+      const idx = parseInt(el.getAttribute("data-slide-index"), 10);
+      if (!Number.isFinite(idx)) return;
+      const active = idx === currentSlideIndex;
+      el.classList.toggle("canvas-slide--active", active);
+      const numBtn = el.querySelector(".canvas-slide-num");
+      if (numBtn) {
+        numBtn.classList.toggle("canvas-slide-num--current", active);
+        numBtn.setAttribute("aria-pressed", active ? "true" : "false");
+      }
+      const fc = slideFabrics[idx];
+      if (fc && fc.upperCanvasEl && fc.lowerCanvasEl) {
+        fc.selection = active;
+        fc.skipTargetFind = !active;
+        fc.upperCanvasEl.style.pointerEvents = "";
+        fc.lowerCanvasEl.style.pointerEvents = "";
+      }
+    });
+  }
+
+  function scrollCanvasSlideIntoView(slideIndex) {
+    const wrap = document.querySelector(
+      '#canvas-stack [data-slide-index="' + String(slideIndex) + '"]'
+    );
+    if (!wrap) return;
+    requestAnimationFrame(() => {
+      wrap.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    });
+  }
+
+  function bindFabricCanvasListeners(fc, slideIdx) {
+    fc.on("selection:created", () => {
+      if (fc !== canvas) return;
+      updateInspector();
+      updateLayers();
+    });
+    fc.on("selection:updated", () => {
+      if (fc !== canvas) return;
+      updateInspector();
+      updateLayers();
+    });
+    fc.on("selection:cleared", () => {
+      if (fc !== canvas) return;
+      updateInspector();
+      updateLayers();
+    });
+    fc.on("object:modified", (e) => {
+      if (fc !== canvas) return;
+      if (e.target && e.target.type === "image") {
+        tryClipImageToFrame(e.target);
+      }
+      scheduleHistory();
+      updateLayers();
+      updateInspector();
+    });
+    fc.on("object:moving", () => {
+      if (fc !== canvas) return;
+      updateLayers();
+    });
+    fc.on("text:changed", () => {
+      if (fc !== canvas) return;
+      updateLayers();
+      scheduleHistory();
+      updateInspector();
+    });
+    fc.on("mouse:down", (opt) => {
+      if (fc !== canvas) {
+        loadSlideAt(slideIdx);
+        return;
+      }
+      if (currentTool === "select") return;
+      if (opt.target) {
+        setTool("select");
+        fc.setActiveObject(opt.target);
+        fc.requestRenderAll();
+        updateInspector();
+        updateLayers();
+        return;
+      }
+      const p = fc.getPointer(opt.e);
+      handlePlacementClick(p);
+      setTool("select");
+    });
+  }
+
+  function rebuildSlideFabricStack(onDone) {
+    const host = document.getElementById("canvas-stack");
+    disposeSlideFabrics();
+    if (!host) {
+      if (onDone) onDone();
+      return;
+    }
+    host.innerHTML = "";
+    if (!slides.length) {
+      if (onDone) onDone();
+      return;
+    }
+    slideFabrics = new Array(slides.length);
+    let pending = slides.length;
+    function doneOne() {
+      pending--;
+      if (pending > 0) return;
+      slideFabrics.forEach((fc, idx) => {
+        if (fc) bindFabricCanvasListeners(fc, idx);
+      });
+      updateCanvasSlideInteractionState();
+      if (onDone) onDone();
+    }
+    slides.forEach((s, idx) => {
+      const slideWrap = document.createElement("div");
+      slideWrap.className = "canvas-slide" + (idx === currentSlideIndex ? " canvas-slide--active" : "");
+      slideWrap.setAttribute("data-slide-index", String(idx));
+      const cardViewport = document.createElement("div");
+      cardViewport.className = "canvas-card-viewport";
+      const card = document.createElement("div");
+      card.className = "canvas-card";
+      const cv = document.createElement("canvas");
+      const cw = s.canvasW || 1080;
+      const ch = s.canvasH || 1080;
+      cv.width = cw;
+      cv.height = ch;
+      card.appendChild(cv);
+      cardViewport.appendChild(card);
+      const rail = document.createElement("div");
+      rail.className = "canvas-slide-rail";
+      const numBtn = document.createElement("button");
+      numBtn.type = "button";
+      numBtn.className = "canvas-slide-num";
+      numBtn.textContent = String(idx + 1);
+      numBtn.title = "슬라이드 " + (idx + 1) + " 편집";
+      numBtn.setAttribute("aria-label", "슬라이드 " + (idx + 1) + " 편집");
+      numBtn.setAttribute("aria-pressed", idx === currentSlideIndex ? "true" : "false");
+      numBtn.addEventListener("click", () => {
+        if (idx !== currentSlideIndex) loadSlideAt(idx);
+      });
+      const orderCol = document.createElement("div");
+      orderCol.className = "canvas-slide-order";
+      const btnUp = document.createElement("button");
+      btnUp.type = "button";
+      btnUp.className = "canvas-slide-arrow";
+      btnUp.textContent = "↑";
+      btnUp.title = "이 슬라이드를 위로";
+      btnUp.setAttribute("aria-label", "이 슬라이드를 위로");
+      btnUp.disabled = idx === 0;
+      btnUp.addEventListener("click", (e) => {
+        e.stopPropagation();
+        moveSlideAtIndex(idx, -1);
+      });
+      const btnDown = document.createElement("button");
+      btnDown.type = "button";
+      btnDown.className = "canvas-slide-arrow";
+      btnDown.textContent = "↓";
+      btnDown.title = "이 슬라이드를 아래로";
+      btnDown.setAttribute("aria-label", "이 슬라이드를 아래로");
+      btnDown.disabled = idx >= slides.length - 1;
+      btnDown.addEventListener("click", (e) => {
+        e.stopPropagation();
+        moveSlideAtIndex(idx, 1);
+      });
+      orderCol.appendChild(btnUp);
+      orderCol.appendChild(btnDown);
+      rail.appendChild(numBtn);
+      rail.appendChild(orderCol);
+      slideWrap.appendChild(cardViewport);
+      slideWrap.appendChild(rail);
+      host.appendChild(slideWrap);
+      const fc = new fabric.Canvas(cv, {
+        preserveObjectStacking: true,
+        selection: idx === currentSlideIndex,
+        backgroundColor: s.bg || "#ffffff",
+      });
+      fc.setWidth(cw);
+      fc.setHeight(ch);
+      fc.loadFromJSON(JSON.parse(s.json || "{}"), () => {
+        fc.renderAll();
+        slideFabrics[idx] = fc;
+        doneOne();
+      });
+    });
+  }
+
+  function syncAllSlidesFromFabric() {
+    if (!slides.length) return;
+    const bgInput = document.getElementById("canvas-bg");
+    const activeBg = bgInput ? bgInput.value : null;
+    slideFabrics.forEach((fc, idx) => {
+      if (!fc || !slides[idx]) return;
+      const isActive = idx === currentSlideIndex;
+      const patch = {
+        canvasW: fc.getWidth(),
+        canvasH: fc.getHeight(),
+        json: snapshotJsonOf(fc),
+        thumb: slides[idx].thumb || "",
+      };
+      if (isActive && activeBg != null) {
+        patch.bg = activeBg;
+        patch.presetId = lastPresetId;
+      }
+      slides[idx] = Object.assign({}, slides[idx], patch);
+    });
+  }
+
+  function hasAnySlideContent() {
+    if (slideFabrics.length) {
+      return slideFabrics.some((fc) => fc && fc.getObjects().length > 0);
+    }
+    return slides.some((s) => {
+      try {
+        const o = JSON.parse(s.json || "{}").objects;
+        return Array.isArray(o) && o.length > 0;
+      } catch {
+        return false;
+      }
+    });
+  }
+
   function snapshotJsonOf(targetCanvas = canvas) {
     return JSON.stringify(
       targetCanvas.toJSON([
@@ -1180,10 +1454,7 @@
 
   function makeSlideFromCanvas() {
     return {
-      id:
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : "s-" + Date.now() + "-" + Math.random().toString(16).slice(2),
+      id: newSlideId(),
       canvasW: logicalW,
       canvasH: logicalH,
       bg: document.getElementById("canvas-bg").value,
@@ -1293,31 +1564,44 @@
 
   function loadSlideAt(index) {
     if (index < 0 || index >= slides.length) return;
-    const s = slides[index];
-    restoring = true;
-    currentSlideIndex = index;
-    logicalW = s.canvasW || 1080;
-    logicalH = s.canvasH || 1080;
-    lastPresetId = s.presetId || matchPresetIdForSize(logicalW, logicalH);
-    canvas.setWidth(logicalW);
-    canvas.setHeight(logicalH);
-    canvas.clear();
-    canvas.backgroundColor = s.bg || "#ffffff";
-    const sel = document.getElementById("preset-size");
-    if (sel && PRESETS.some((p) => p.id === lastPresetId)) sel.value = lastPresetId;
-    document.getElementById("canvas-bg").value = s.bg || "#ffffff";
-    canvas.loadFromJSON(JSON.parse(s.json || "{}"), () => {
+    syncCurrentSlideState();
+
+    function applyLoadedSlide() {
+      const s = slides[index];
+      restoring = true;
+      currentSlideIndex = index;
+      logicalW = s.canvasW || 1080;
+      logicalH = s.canvasH || 1080;
+      lastPresetId = s.presetId || matchPresetIdForSize(logicalW, logicalH);
+      canvas = slideFabrics[index];
+      const sel = document.getElementById("preset-size");
+      if (sel && PRESETS.some((p) => p.id === lastPresetId)) sel.value = lastPresetId;
+      document.getElementById("canvas-bg").value = s.bg || "#ffffff";
+      canvas.setWidth(logicalW);
+      canvas.setHeight(logicalH);
+      canvas.backgroundColor = s.bg || "#ffffff";
       restoring = false;
       canvas.renderAll();
       syncBgInput();
       resetHistoryFromCanvas();
       updateLayers();
       updateInspector();
-      fitZoom();
+      applyDisplayZoom(displayScale);
       setTool("select");
       updateSlideUi();
+      updateCanvasSlideInteractionState();
+      slideFabrics.forEach((fc) => {
+        if (fc) requestAnimationFrame(() => fc.calcOffset());
+      });
       queueCurrentSlideThumbRefresh();
-    });
+      scrollCanvasSlideIntoView(index);
+    }
+
+    if (!slideFabrics.length || slideFabrics.length !== slides.length) {
+      rebuildSlideFabricStack(applyLoadedSlide);
+      return;
+    }
+    applyLoadedSlide();
   }
 
   function addSlide(blank) {
@@ -1343,7 +1627,6 @@
         });
     slides.splice(currentSlideIndex + 1, 0, base);
     loadSlideAt(currentSlideIndex + 1);
-    queueCurrentSlideThumbRefresh();
   }
 
   function deleteSlide() {
@@ -1358,17 +1641,34 @@
     toast("슬라이드를 지웠습니다");
   }
 
-  function moveSlideOrder(dir) {
+  function moveSlideAtIndex(idx, dir) {
+    if (dir !== -1 && dir !== 1) return;
+    const j = idx + dir;
+    if (j < 0 || j >= slides.length) return;
     syncCurrentSlideState();
-    const next = currentSlideIndex + dir;
-    if (next < 0 || next >= slides.length) return;
-    const tmp = slides[currentSlideIndex];
-    slides[currentSlideIndex] = slides[next];
-    slides[next] = tmp;
-    currentSlideIndex = next;
-    updateSlideUi();
-    renderSlideList();
-    toast(dir < 0 ? "이전 순서로 이동했습니다" : "다음 순서로 이동했습니다");
+    syncAllSlidesFromFabric();
+    const tmp = slides[idx];
+    slides[idx] = slides[j];
+    slides[j] = tmp;
+    if (currentSlideIndex === idx) currentSlideIndex = j;
+    else if (currentSlideIndex === j) currentSlideIndex = idx;
+    rebuildSlideFabricStack(() => {
+      canvas = slideFabrics[currentSlideIndex];
+      resetHistoryFromCanvas();
+      updateSlideUi();
+      applyDisplayZoom(displayScale);
+      updateCanvasSlideInteractionState();
+      slideFabrics.forEach((fc) => {
+        if (fc) requestAnimationFrame(() => fc.calcOffset());
+      });
+      queueCurrentSlideThumbRefresh();
+      scrollCanvasSlideIntoView(currentSlideIndex);
+    });
+    toast(dir < 0 ? "위로 순서를 바꿨습니다" : "아래로 순서를 바꿨습니다");
+  }
+
+  function moveSlideOrder(dir) {
+    moveSlideAtIndex(currentSlideIndex, dir);
   }
 
   function applyCustomSlideSize() {
@@ -1702,7 +2002,7 @@
     const w = getWorks().find((x) => x.id === id);
     if (!w) return;
     if (
-      canvas.getObjects().length > 0 &&
+      hasAnySlideContent() &&
       !confirm("저장되지 않은 변경이 사라질 수 있습니다. 이 작업을 불러올까요?")
     )
       return;
@@ -1756,7 +2056,7 @@
 
   function newProject() {
     if (
-      canvas.getObjects().length > 0 &&
+      hasAnySlideContent() &&
       !confirm(
         "캔버스를 비우고 새 프로젝트를 시작할까요?"
       )
@@ -1767,10 +2067,7 @@
     const bg = document.getElementById("canvas-bg").value || "#ffffff";
     slides = [
       {
-        id:
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : "s-" + Date.now() + "-" + Math.random().toString(16).slice(2),
+        id: newSlideId(),
         canvasW: logicalW,
         canvasH: logicalH,
         bg: bg,
@@ -1861,11 +2158,36 @@
 
   function applyDisplayZoom(scale) {
     displayScale = Math.min(2.2, Math.max(0.12, scale));
-    const card = document.getElementById("canvas-card");
-    card.style.transform = `scale(${displayScale})`;
-    card.style.transformOrigin = "center center";
+    const stack = document.getElementById("canvas-stack");
+    if (stack) {
+      stack.querySelectorAll(".canvas-slide").forEach((slideEl) => {
+        const si = parseInt(slideEl.getAttribute("data-slide-index"), 10);
+        const vp = slideEl.querySelector(".canvas-card-viewport");
+        const card = slideEl.querySelector(".canvas-card");
+        if (!vp || !card || !Number.isFinite(si)) return;
+        const fc = slideFabrics[si];
+        const w =
+          (fc && typeof fc.getWidth === "function" && fc.getWidth()) ||
+          (slides[si] && slides[si].canvasW) ||
+          logicalW ||
+          1080;
+        const h =
+          (fc && typeof fc.getHeight === "function" && fc.getHeight()) ||
+          (slides[si] && slides[si].canvasH) ||
+          logicalH ||
+          1080;
+        vp.style.width = w * displayScale + "px";
+        vp.style.height = h * displayScale + "px";
+        card.style.transform = "scale(" + displayScale + ")";
+        card.style.transformOrigin = "0 0";
+      });
+    }
     document.getElementById("zoom-label").textContent = Math.round(displayScale * 100) + "%";
-    requestAnimationFrame(() => canvas.calcOffset());
+    requestAnimationFrame(() => {
+      slideFabrics.forEach((fc) => {
+        if (fc) fc.calcOffset();
+      });
+    });
   }
 
   function fitZoom() {
@@ -1880,13 +2202,21 @@
   function setLogicalSize(w, h, clearContent) {
     logicalW = w;
     logicalH = h;
-    canvas.setWidth(w);
-    canvas.setHeight(h);
-    if (clearContent) {
-      canvas.clear();
-      canvas.backgroundColor = document.getElementById("canvas-bg").value;
+    if (canvas) {
+      canvas.setWidth(w);
+      canvas.setHeight(h);
+      if (clearContent) {
+        canvas.clear();
+        canvas.backgroundColor = document.getElementById("canvas-bg").value;
+      }
+      canvas.renderAll();
     }
-    canvas.renderAll();
+    if (slides.length && slides[currentSlideIndex]) {
+      slides[currentSlideIndex] = Object.assign({}, slides[currentSlideIndex], {
+        canvasW: w,
+        canvasH: h,
+      });
+    }
     fitZoom();
   }
 
@@ -1998,6 +2328,29 @@
     return fallback;
   }
 
+  function syncTextStyleToolbar(o) {
+    const wrap = document.getElementById("ins-text-para-wrap");
+    if (!wrap || wrap.hidden) return;
+    if (!o || !(o.type === "i-text" || o.type === "text" || o.type === "textbox")) return;
+    const align = o.textAlign || "left";
+    document.querySelectorAll("[data-text-align]").forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-text-align") === align);
+    });
+    const fw = o.fontWeight;
+    const n = parseInt(fw, 10);
+    const isBold = fw === "bold" || (!Number.isNaN(n) && n >= 700);
+    const isItalic = o.fontStyle === "italic";
+    const isUnder = !!o.underline;
+    const isStrike = !!o.linethrough;
+    const map = { bold: isBold, italic: isItalic, underline: isUnder, strike: isStrike };
+    document.querySelectorAll("[data-text-toggle]").forEach((b) => {
+      const k = b.getAttribute("data-text-toggle");
+      const on = !!map[k];
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
   function updateInspector() {
     const o = getActiveTarget();
     const empty = document.getElementById("inspector-empty");
@@ -2015,6 +2368,8 @@
     const isImage = o.type === "image";
 
     document.getElementById("ins-text-wrap").hidden = !isText;
+    const paraWrap = document.getElementById("ins-text-para-wrap");
+    if (paraWrap) paraWrap.hidden = !isText;
     document.getElementById("ins-font-wrap").hidden = !isText;
     document.getElementById("ins-size-wrap").hidden = !isText;
     document.getElementById("ins-stroke-wrap").hidden = isImage;
@@ -2028,6 +2383,7 @@
       document.getElementById("ins-size-val").textContent = fs + "px";
       const q = (document.getElementById("ins-font-search").value || "").trim();
       renderFontPreviewList(q);
+      syncTextStyleToolbar(o);
     }
 
     const fill = o.fill;
@@ -4415,7 +4771,7 @@
   }
 
   async function runDownload() {
-    syncCurrentSlideState();
+    syncAllSlidesFromFabric();
     const format = document.getElementById("download-format").value;
     const indexes = getDownloadIndexes();
     if (!indexes.length) {
@@ -4440,7 +4796,7 @@
     const insText = document.getElementById("ins-text");
     insText.addEventListener("input", () => {
       const o = getActiveTarget();
-      if (o && (o.type === "i-text" || o.type === "text")) {
+      if (o && (o.type === "i-text" || o.type === "text" || o.type === "textbox")) {
         o.set("text", insText.value);
         canvas.requestRenderAll();
         scheduleHistory();
@@ -4463,13 +4819,47 @@
 
     document.getElementById("ins-font-size").addEventListener("input", (e) => {
       const o = getActiveTarget();
-      if (o && o.type === "i-text") {
+      if (o && (o.type === "i-text" || o.type === "text" || o.type === "textbox")) {
         const v = parseInt(e.target.value, 10) || 8;
         o.set("fontSize", v);
         document.getElementById("ins-size-val").textContent = v + "px";
         canvas.requestRenderAll();
         scheduleHistory();
       }
+    });
+
+    document.querySelectorAll("[data-text-align]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const o = getActiveTarget();
+        if (!o || !(o.type === "i-text" || o.type === "text" || o.type === "textbox")) return;
+        o.set("textAlign", btn.getAttribute("data-text-align") || "left");
+        o.setCoords();
+        canvas.requestRenderAll();
+        flushHistory();
+        syncTextStyleToolbar(o);
+      });
+    });
+    document.querySelectorAll("[data-text-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const o = getActiveTarget();
+        if (!o || !(o.type === "i-text" || o.type === "text" || o.type === "textbox")) return;
+        const k = btn.getAttribute("data-text-toggle");
+        if (k === "bold") {
+          const fw = o.fontWeight;
+          const n = parseInt(fw, 10);
+          const on = fw === "bold" || (!Number.isNaN(n) && n >= 700);
+          o.set("fontWeight", on ? "normal" : "bold");
+        } else if (k === "italic") {
+          o.set("fontStyle", o.fontStyle === "italic" ? "normal" : "italic");
+        } else if (k === "underline") {
+          o.set("underline", !o.underline);
+        } else if (k === "strike") {
+          o.set("linethrough", !o.linethrough);
+        }
+        canvas.requestRenderAll();
+        flushHistory();
+        syncTextStyleToolbar(o);
+      });
     });
 
     document.getElementById("ins-fill").addEventListener("input", (e) => {
@@ -4584,11 +4974,50 @@
     }
     else setCloudStatus("클라우드 미연결");
 
-    canvas = new fabric.Canvas("design-canvas", {
-      preserveObjectStacking: true,
-      selection: true,
-      backgroundColor: "#ffffff",
-    });
+    let canvasClipboard = null;
+
+    function copySelectionToCanvasClipboard() {
+      const active = canvas.getActiveObject();
+      if (!active) return;
+      if (active.type === "i-text" && active.isEditing) return;
+      active.clone((cloned) => {
+        canvasClipboard = cloned;
+      });
+    }
+
+    function pasteFromCanvasClipboard() {
+      if (!canvasClipboard) return;
+      const cur = canvas.getActiveObject();
+      if (cur && cur.type === "i-text" && cur.isEditing) return;
+      canvasClipboard.clone((clonedObj) => {
+        canvas.discardActiveObject();
+        const dx = 18;
+        const dy = 18;
+        clonedObj.set({
+          left: (clonedObj.left || 0) + dx,
+          top: (clonedObj.top || 0) + dy,
+          evented: true,
+        });
+        canvasClipboard.set({
+          left: (canvasClipboard.left || 0) + dx,
+          top: (canvasClipboard.top || 0) + dy,
+        });
+        if (clonedObj.type === "activeSelection") {
+          clonedObj.canvas = canvas;
+          clonedObj.forEachObject((obj) => {
+            canvas.add(obj);
+          });
+          clonedObj.setCoords();
+        } else {
+          canvas.add(clonedObj);
+        }
+        canvas.setActiveObject(clonedObj);
+        canvas.requestRenderAll();
+        flushHistory();
+        updateLayers();
+        updateInspector();
+      });
+    }
 
     const sel = document.getElementById("preset-size");
     PRESETS.forEach((p) => {
@@ -4601,19 +5030,64 @@
 
     sel.addEventListener("change", () => applyPreset(sel.value));
 
-    document.getElementById("canvas-bg").addEventListener("input", (e) => {
-      canvas.backgroundColor = e.target.value;
-      canvas.requestRenderAll();
-      scheduleHistory();
+    const initialBg = document.getElementById("canvas-bg").value || "#ffffff";
+    slides = [
+      {
+        id: newSlideId(),
+        canvasW: 1080,
+        canvasH: 1080,
+        bg: initialBg,
+        presetId: "ig",
+        json: JSON.stringify({ objects: [], background: initialBg }),
+        thumb: "",
+      },
+    ];
+    currentSlideIndex = 0;
+    logicalW = 1080;
+    logicalH = 1080;
+    lastPresetId = "ig";
+
+    initWordArtButtons();
+    initIconSearch();
+    initRailSlidePanel();
+    initMyFilesPanel();
+    ensureFolders();
+    renderFolderSelect();
+    renderWorkList();
+
+    const tplRoot = document.getElementById("template-list");
+    TEMPLATES.forEach((tpl) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tpl-btn";
+      const thumb = buildTemplatePreview(tpl);
+      b.innerHTML = `
+        <img class="tpl-thumb" src="${thumb}" alt="${tpl.name} 미리보기" />
+        <span class="tpl-meta">
+          <strong>${tpl.name}</strong>
+          <small>${tpl.desc}</small>
+        </span>`;
+      b.addEventListener("click", () => clearAndTemplate(tpl.fn));
+      tplRoot.appendChild(b);
     });
 
-    setLogicalSize(logicalW, logicalH, false);
-    canvas.backgroundColor = document.getElementById("canvas-bg").value;
-    canvas.renderAll();
+    const fontSel = document.getElementById("ins-font");
+    FONTS.forEach((f) => {
+      const o = document.createElement("option");
+      o.value = f.v;
+      o.textContent = f.l;
+      fontSel.appendChild(o);
+    });
 
-    history.length = 0;
-    historyStep = -1;
-    pushHistory();
+    function attachEditorDomListenersOnce() {
+      if (domListenersAttached) return;
+      domListenersAttached = true;
+      document.getElementById("canvas-bg").addEventListener("input", (e) => {
+        if (!canvas) return;
+        canvas.backgroundColor = e.target.value;
+        canvas.requestRenderAll();
+        scheduleHistory();
+      });
 
     document.getElementById("zoom-out").addEventListener("click", () => applyDisplayZoom(displayScale / 1.12));
     document.getElementById("zoom-in").addEventListener("click", () => applyDisplayZoom(displayScale * 1.12));
@@ -4669,18 +5143,6 @@
       });
     });
 
-    initWordArtButtons();
-    initIconSearch();
-    initRailSlidePanel();
-    initMyFilesPanel();
-    ensureFolders();
-    renderFolderSelect();
-    renderWorkList();
-    slides = [makeSlideFromCanvas()];
-    currentSlideIndex = 0;
-    updateSlideUi();
-    queueCurrentSlideThumbRefresh();
-
     document.getElementById("img-upload").addEventListener("change", (e) => {
       const f = e.target.files[0];
       if (!f) return;
@@ -4711,72 +5173,7 @@
       e.target.value = "";
     });
 
-    const tplRoot = document.getElementById("template-list");
-    TEMPLATES.forEach((tpl) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "tpl-btn";
-      const thumb = buildTemplatePreview(tpl);
-      b.innerHTML = `
-        <img class="tpl-thumb" src="${thumb}" alt="${tpl.name} 미리보기" />
-        <span class="tpl-meta">
-          <strong>${tpl.name}</strong>
-          <small>${tpl.desc}</small>
-        </span>`;
-      b.addEventListener("click", () => clearAndTemplate(tpl.fn));
-      tplRoot.appendChild(b);
-    });
-
-    const fontSel = document.getElementById("ins-font");
-    FONTS.forEach((f) => {
-      const o = document.createElement("option");
-      o.value = f.v;
-      o.textContent = f.l;
-      fontSel.appendChild(o);
-    });
-
     bindInspector();
-
-    canvas.on("selection:created", () => {
-      updateInspector();
-      updateLayers();
-    });
-    canvas.on("selection:updated", () => {
-      updateInspector();
-      updateLayers();
-    });
-    canvas.on("selection:cleared", () => {
-      updateInspector();
-      updateLayers();
-    });
-    canvas.on("object:modified", (e) => {
-      if (e.target && e.target.type === "image") {
-        tryClipImageToFrame(e.target);
-      }
-      scheduleHistory();
-      updateLayers();
-      updateInspector();
-    });
-    canvas.on("object:moving", () => updateLayers());
-    canvas.on("text:changed", () => {
-      updateLayers();
-      scheduleHistory();
-    });
-
-    canvas.on("mouse:down", (opt) => {
-      if (currentTool === "select") return;
-      if (opt.target) {
-        setTool("select");
-        canvas.setActiveObject(opt.target);
-        canvas.requestRenderAll();
-        updateInspector();
-        updateLayers();
-        return;
-      }
-      const p = canvas.getPointer(opt.e);
-      handlePlacementClick(p);
-      setTool("select");
-    });
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
@@ -4793,6 +5190,25 @@
       }
       const tag = (e.target && e.target.tagName) || "";
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.target && e.target.isContentEditable) return;
+
+      if (e.ctrlKey || e.metaKey) {
+        const k = e.key.toLowerCase();
+        if (k === "c") {
+          const active = canvas.getActiveObject();
+          if (active && !(active.type === "i-text" && active.isEditing)) {
+            e.preventDefault();
+            copySelectionToCanvasClipboard();
+          }
+        } else if (k === "v") {
+          const cur = canvas.getActiveObject();
+          if (canvasClipboard && !(cur && cur.type === "i-text" && cur.isEditing)) {
+            e.preventDefault();
+            pasteFromCanvasClipboard();
+          }
+        }
+      }
+
       if (e.key === "Delete" || e.key === "Backspace") {
         const o = canvas.getActiveObject();
         if (!o) return;
@@ -4806,15 +5222,25 @@
         updateLayers();
         updateInspector();
       }
-      if (e.key === "v" || e.key === "V") setTool("select");
-      if (e.key === "t" || e.key === "T") setTool("text");
+      if ((e.key === "v" || e.key === "V") && !e.ctrlKey && !e.metaKey) setTool("select");
+      if ((e.key === "t" || e.key === "T") && !e.ctrlKey && !e.metaKey) setTool("text");
     });
+    }
 
-    setTool("select");
-    fitZoom();
-    updateLayers();
-    updateInspector();
-    updateUndoRedoButtons();
+    rebuildSlideFabricStack(() => {
+      canvas = slideFabrics[currentSlideIndex];
+      attachEditorDomListenersOnce();
+      history.length = 0;
+      historyStep = -1;
+      pushHistory();
+      updateSlideUi();
+      queueCurrentSlideThumbRefresh();
+      setTool("select");
+      fitZoom();
+      updateLayers();
+      updateInspector();
+      updateUndoRedoButtons();
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

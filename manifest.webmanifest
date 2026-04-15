@@ -1,0 +1,11 @@
+{
+  "name": "준스보드 — 디자인 보드",
+  "short_name": "준스보드",
+  "description": "브라우저에서 포스터·SNS 이미지·썸네일을 만드는 캔버스 디자인 도구",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eceef2",
+  "theme_color": "#6366f1",
+  "lang": "ko"
+}

@@ -4,10 +4,30 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="브라우저에서 포스터·SNS 이미지·썸네일을 만드는 캔버스 디자인 도구" />
+<meta name="keywords" content="준스보드, 캔버스, 디자인, 포스터, SNS, 썸네일, 이미지 편집" />
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+<meta name="theme-color" content="#6366f1" />
+<link rel="canonical" href="https://kyungrock.github.io/joons-board/" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta property="og:site_name" content="준스보드" />
+<meta property="og:title" content="준스보드 — 디자인 보드" />
+<meta property="og:description" content="브라우저에서 포스터·SNS 이미지·썸네일을 만드는 캔버스 디자인 도구" />
+<meta property="og:url" content="https://kyungrock.github.io/joons-board/" />
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="ko_KR" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="준스보드 — 디자인 보드" />
+<meta name="twitter:description" content="브라우저에서 포스터·SNS 이미지·썸네일을 만드는 캔버스 디자인 도구" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"준스보드","alternateName":"디자인 보드","url":"https://kyungrock.github.io/joons-board/","description":"브라우저에서 포스터·SNS 이미지·썸네일을 만드는 캔버스 디자인 도구","applicationCategory":"DesignApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript.","inLanguage":"ko"}
+</script>
 <title>준스보드 — 디자인 보드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Anton&family=Bangers&family=Bebas+Neue&family=Black+And+White+Picture&family=Black+Han+Sans&family=Caveat:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Dongle:wght@300;400;700&family=Do+Hyeon&family=Fira+Sans:wght@400;500;700&family=Gaegu:wght@300;400;700&family=Gamja+Flower&family=Gowun+Batang:wght@400;700&family=Gugi&family=Hahmlet:wght@400;600;700&family=Hi+Melody&family=IBM+Plex+Sans+KR:wght@400;500;700&family=Inter:wght@400;500;700;800&family=Jua&family=Lato:wght@400;700;900&family=Merriweather:wght@400;700;900&family=Montserrat:wght@400;500;700;800&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500;600;700;800&family=Noto+Serif+KR:wght@400;600;700;900&family=Nunito:wght@400;600;700;800&family=Oswald:wght@400;500;700&family=Pacifico&family=Playfair+Display:wght@400;600;700;800&family=Poor+Story&family=Poppins:wght@400;500;700;800&family=Roboto+Slab:wght@400;500;700;800&family=Rubik:wght@400;500;700;800&family=Single+Day&family=Sunflower:wght@300;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;700&family=Song+Myung&family=Stylish&family=Yeon+Sung&family=Kirang+Haerang&family=East+Sea+Dokdo&family=Nanum+Brush+Script&family=Diphylleia&family=Bagel+Fat+One&family=Dokdo&family=Bungee&family=Righteous&family=Russo+One&family=Squada+One&family=Teko:wght@400;600;700&family=Alumni+Sans:wght@400;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700;800&family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,700&family=Libre+Baskerville:wght@400;700&family=Manrope:wght@400;700;800&family=Space+Grotesk:wght@400;700&family=Outfit:wght@400;700;800&family=Lexend:wght@400;700&family=Dancing+Script:wght@400;700&family=Satisfy&family=Lobster&family=Permanent+Marker&family=Barlow:wght@400;700;800&family=Open+Sans:wght@400;700&family=Mulish:wght@400;700;800&family=Quicksand:wght@400;700&family=Urbanist:wght@400;700;800&family=Figtree:wght@400;700&family=Syne:wght@400;700;800&family=Work+Sans:wght@400;600;700&family=Kanit:wght@400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/style.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,7 +56,7 @@
 <input type="number" id="slide-width" class="input number-xs" min="64" max="8000" step="1" />
 <span>×</span>
 <input type="number" id="slide-height" class="input number-xs" min="64" max="8000" step="1" />
-<button type="button" class="btn btn-sm" id="btn-apply-slide-size">크기 적용</button>
+<button type="button" class="btn btn-sm" id="btn-apply-slide-size">적용</button>
 </div>
 <div class="slide-actions">
 <span class="slide-label" id="slide-label">슬라이드 1 / 1</span>
@@ -206,15 +226,13 @@
 </aside>
 <div class="editor-canvas-zone" id="viewport" tabindex="-1">
 <div class="canvas-viewport-inner" id="viewport-inner">
-<div class="canvas-card" id="canvas-card">
-<canvas id="design-canvas" width="1080" height="1080"></canvas>
+<div class="canvas-stack" id="canvas-stack"></div>
 </div>
 </div>
 <aside class="slide-stack" aria-label="슬라이드 목록">
 <h3 class="slide-stack-title">슬라이드</h3>
 <div class="slide-list" id="slide-list"></div>
 </aside>
-</div>
 <aside class="editor-inspector" aria-label="속성">
 <h2 class="rail-title">속성</h2>
 <div id="inspector-empty" class="inspector-empty">
@@ -228,6 +246,22 @@
 <div class="inspector-row" id="ins-text-wrap" hidden>
 <label class="ins-label">내용</label>
 <textarea id="ins-text" class="input textarea-sm" rows="3"></textarea>
+</div>
+<div class="inspector-row" id="ins-text-para-wrap" hidden>
+<label class="ins-label">텍스트 안 맞춤</label>
+<div class="ins-btn-grid ins-btn-grid-4" role="group" aria-label="가로 맞춤">
+<button type="button" class="btn btn-sm" data-text-align="left" title="왼쪽 맞춤">왼쪽</button>
+<button type="button" class="btn btn-sm" data-text-align="center" title="가운데 맞춤">가운데</button>
+<button type="button" class="btn btn-sm" data-text-align="right" title="오른쪽 맞춤">오른쪽</button>
+<button type="button" class="btn btn-sm" data-text-align="justify" title="양쪽 맞춤">양쪽</button>
+</div>
+<label class="ins-label ins-label-spaced">스타일</label>
+<div class="ins-btn-grid ins-btn-grid-2" role="group" aria-label="글자 스타일">
+<button type="button" class="btn btn-sm" data-text-toggle="bold" title="굵게" aria-pressed="false">굵게</button>
+<button type="button" class="btn btn-sm" data-text-toggle="italic" title="기울임" aria-pressed="false">기울임</button>
+<button type="button" class="btn btn-sm" data-text-toggle="underline" title="밑줄" aria-pressed="false">밑줄</button>
+<button type="button" class="btn btn-sm" data-text-toggle="strike" title="취소선" aria-pressed="false">취소선</button>
+</div>
 </div>
 <div class="inspector-row" id="ins-font-wrap" hidden>
 <label class="ins-label">글꼴</label>

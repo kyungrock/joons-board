@@ -122,11 +122,13 @@ const h = `<!DOCTYPE html>
       </aside>
       <div class="editor-canvas-zone" id="viewport" tabindex="-1">
         <div class="canvas-viewport-inner" id="viewport-inner">
-          <div class="canvas-card" id="canvas-card">
-            <canvas id="design-canvas" width="1080" height="1080"></canvas>
-          </div>
+          <div class="canvas-stack" id="canvas-stack"></div>
         </div>
       </div>
+      <aside class="slide-stack" aria-label="\uC2AC\uB77C\uC774\uB4DC \uBAA9\uB85D">
+        <h3 class="slide-stack-title">\uC2AC\uB77C\uC774\uB4DC</h3>
+        <div class="slide-list" id="slide-list"></div>
+      </aside>
       <aside class="editor-inspector" aria-label="\uC18D\uC131">
         <h2 class="rail-title">\uC18D\uC131</h2>
         <div id="inspector-empty" class="inspector-empty">

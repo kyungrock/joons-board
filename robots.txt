@@ -1,0 +1,5 @@
+# 준스보드 — https://github.com/kyungrock/joons-board
+User-agent: *
+Allow: /
+
+Sitemap: https://kyungrock.github.io/joons-board/sitemap.xml
