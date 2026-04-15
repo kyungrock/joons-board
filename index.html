@@ -263,6 +263,53 @@
 <button type="button" class="btn btn-sm" data-text-toggle="strike" title="취소선" aria-pressed="false">취소선</button>
 </div>
 </div>
+<div class="inspector-row" id="ins-text-effects-wrap" hidden>
+<label class="ins-label">텍스트 색상</label>
+<input type="color" id="ins-text-color" value="#1e293b" />
+<label class="ins-label ins-label-spaced">텍스트 배경</label>
+<div class="ins-check-row">
+<label><input type="checkbox" id="ins-text-bg-enabled" /> 사용</label>
+</div>
+<input type="color" id="ins-text-bg" value="#ffffff" />
+<label class="ins-label ins-label-spaced">윤곽선 <span id="ins-text-outline-width-val" class="val-pill">0px</span></label>
+<input type="color" id="ins-text-outline-color" value="#000000" />
+<div class="ins-btn-grid ins-btn-grid-2">
+<input type="range" id="ins-text-outline-width" min="0" max="40" value="0" />
+<input type="number" id="ins-text-outline-width-num" class="input" min="0" max="40" step="1" value="0" />
+</div>
+<label class="ins-label ins-label-spaced">이중윤곽선 <span id="ins-text-double-width-val" class="val-pill">0px</span></label>
+<div class="ins-check-row">
+<label><input type="checkbox" id="ins-text-double-enabled" /> 사용</label>
+</div>
+<input type="color" id="ins-text-double-color" value="#111111" />
+<div class="ins-btn-grid ins-btn-grid-2">
+<input type="range" id="ins-text-double-width" min="0" max="30" value="0" />
+<input type="number" id="ins-text-double-width-num" class="input" min="0" max="30" step="1" value="0" />
+</div>
+<label class="ins-label ins-label-spaced">그림자</label>
+<div class="ins-check-row">
+<label><input type="checkbox" id="ins-text-shadow-enabled" /> 사용</label>
+</div>
+<div class="ins-btn-grid ins-btn-grid-2" role="group" aria-label="그림자 타입">
+<button type="button" class="btn btn-sm" data-shadow-style="soft">그림자T</button>
+<button type="button" class="btn btn-sm" data-shadow-style="long">긴 그림자T</button>
+</div>
+<input type="color" id="ins-text-shadow-color" value="#000000" />
+<div class="ins-btn-grid ins-btn-grid-2">
+<input type="range" id="ins-text-shadow-blur" min="0" max="40" value="8" />
+<input type="number" id="ins-text-shadow-blur-num" class="input" min="0" max="40" step="1" value="8" />
+</div>
+<label class="ins-label ins-label-spaced">그림자 불투명도 <span id="ins-text-shadow-opacity-val" class="val-pill">45%</span></label>
+<div class="ins-btn-grid ins-btn-grid-2">
+<input type="range" id="ins-text-shadow-opacity" min="0" max="100" value="45" />
+<input type="number" id="ins-text-shadow-opacity-num" class="input" min="0" max="100" step="1" value="45" />
+</div>
+<label class="ins-label ins-label-spaced">그림자 블러 <span id="ins-text-shadow-blur-val" class="val-pill">8px</span></label>
+<div class="ins-btn-grid ins-btn-grid-2">
+<input type="number" id="ins-text-shadow-x" class="input" min="-50" max="50" step="1" value="2" />
+<input type="number" id="ins-text-shadow-y" class="input" min="-50" max="50" step="1" value="2" />
+</div>
+</div>
 <div class="inspector-row" id="ins-font-wrap" hidden>
 <label class="ins-label">글꼴</label>
 <select id="ins-font" class="select"></select>
@@ -271,7 +318,10 @@
 </div>
 <div class="inspector-row" id="ins-size-wrap" hidden>
 <label class="ins-label">크기 <span id="ins-size-val" class="val-pill"></span></label>
+<div class="ins-btn-grid ins-btn-grid-2">
 <input type="range" id="ins-font-size" min="8" max="200" value="48" />
+<input type="number" id="ins-font-size-num" class="input" min="8" max="200" step="1" value="48" />
+</div>
 </div>
 <div class="inspector-row">
 <label class="ins-label">채우기</label>
@@ -283,11 +333,17 @@
 </div>
 <div class="inspector-row" id="ins-stroke-w-wrap" hidden>
 <label class="ins-label">테두리 두께</label>
+<div class="ins-btn-grid ins-btn-grid-2">
 <input type="range" id="ins-stroke-width" min="0" max="40" value="2" />
+<input type="number" id="ins-stroke-width-num" class="input" min="0" max="40" step="1" value="2" />
+</div>
 </div>
 <div class="inspector-row">
 <label class="ins-label">불투명도</label>
+<div class="ins-btn-grid ins-btn-grid-2">
 <input type="range" id="ins-opacity" min="0" max="100" value="100" />
+<input type="number" id="ins-opacity-num" class="input" min="0" max="100" step="1" value="100" />
+</div>
 </div>
 <div class="inspector-row" id="ins-size-box-wrap">
 <label class="ins-label">크기 (너비 × 높이)</label>

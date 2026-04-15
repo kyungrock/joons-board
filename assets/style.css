@@ -1842,6 +1842,17 @@ body {
   margin-top: 0.55rem;
 }
 
+.ins-check-row {
+  display: flex;
+  align-items: center;
+  margin: 0.2rem 0 0.35rem;
+  font-size: 0.78rem;
+}
+
+.ins-check-row input[type="checkbox"] {
+  margin-right: 0.35rem;
+}
+
 .ins-btn-grid .btn-sm.active {
   border-color: var(--accent);
   color: var(--accent);

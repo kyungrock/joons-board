@@ -1577,6 +1577,20 @@
         "photoFrameType",
         "flipX",
         "flipY",
+        "textBgEnabled",
+        "textBgColor",
+        "textOutlineColor",
+        "textOutlineWidth",
+        "textDoubleEnabled",
+        "textDoubleColor",
+        "textDoubleWidth",
+        "textShadowEnabled",
+        "textShadowStyle",
+        "textShadowColor",
+        "textShadowOpacity",
+        "textShadowBlur",
+        "textShadowX",
+        "textShadowY",
       ])
     );
   }
@@ -2457,6 +2471,179 @@
     return fallback;
   }
 
+  function isTextObj(o) {
+    return !!o && (o.type === "i-text" || o.type === "text" || o.type === "textbox");
+  }
+
+  function shadowColorToHex(shadow, fallback) {
+    if (!shadow) return fallback;
+    const c = typeof shadow === "string" ? shadow : shadow.color;
+    if (typeof c === "string" && c.startsWith("#")) return c.slice(0, 7);
+    if (typeof c === "string" && c.startsWith("rgb")) return rgbToHex(c);
+    return fallback;
+  }
+
+  function shadowColorToOpacity(shadow, fallback) {
+    if (!shadow) return fallback;
+    const c = typeof shadow === "string" ? shadow : shadow.color;
+    if (typeof c !== "string") return fallback;
+    const m = c.match(/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([0-9.]+)\s*\)/i);
+    if (!m) return fallback;
+    const v = Number(m[1]);
+    if (!Number.isFinite(v)) return fallback;
+    return Math.max(0, Math.min(100, Math.round(v * 100)));
+  }
+
+  function hexToRgba(hex, opacityPct) {
+    const safe = (hex || "#000000").replace("#", "");
+    const h = safe.length >= 6 ? safe.slice(0, 6) : "000000";
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    const a = Math.max(0, Math.min(100, Number(opacityPct || 0))) / 100;
+    return "rgba(" + r + "," + g + "," + b + "," + a.toFixed(3) + ")";
+  }
+
+  function syncShadowStyleButtons(o) {
+    const style = (o && o.textShadowStyle) || "soft";
+    document.querySelectorAll("[data-shadow-style]").forEach((b) => {
+      const on = b.getAttribute("data-shadow-style") === style;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
+  function hydrateTextFxState(o) {
+    if (!isTextObj(o)) return;
+    if (o.textBgEnabled == null) o.textBgEnabled = !!o.textBackgroundColor;
+    if (o.textBgColor == null) o.textBgColor = fillToHex(o.textBackgroundColor, "#ffffff");
+    if (o.textOutlineColor == null) o.textOutlineColor = fillToHex(o.stroke, "#000000");
+    if (o.textOutlineWidth == null) o.textOutlineWidth = Number(o.strokeWidth || 0);
+    if (o.textDoubleEnabled == null) {
+      const sh = o.shadow;
+      o.textDoubleEnabled = !!(
+        sh &&
+        Math.abs(Number(sh.offsetX || 0)) === 0 &&
+        Math.abs(Number(sh.offsetY || 0)) === 0 &&
+        Number(sh.blur || 0) > 0
+      );
+    }
+    if (o.textDoubleColor == null) o.textDoubleColor = shadowColorToHex(o.shadow, "#111111");
+    if (o.textDoubleWidth == null) {
+      const sh = o.shadow;
+      o.textDoubleWidth = o.textDoubleEnabled ? Math.max(1, Math.round(Number(sh && sh.blur ? sh.blur : 0) / 2)) : 0;
+    }
+    if (o.textShadowEnabled == null) {
+      const sh = o.shadow;
+      o.textShadowEnabled = !!(
+        sh &&
+        (Math.abs(Number(sh.offsetX || 0)) > 0 ||
+          Math.abs(Number(sh.offsetY || 0)) > 0)
+      );
+    }
+    if (o.textShadowStyle == null) {
+      const x = Number((o.shadow && o.shadow.offsetX) || 0);
+      const y = Number((o.shadow && o.shadow.offsetY) || 0);
+      o.textShadowStyle = Math.abs(x) >= 10 || Math.abs(y) >= 10 ? "long" : "soft";
+    }
+    if (o.textShadowColor == null) o.textShadowColor = shadowColorToHex(o.shadow, "#000000");
+    if (o.textShadowOpacity == null) o.textShadowOpacity = shadowColorToOpacity(o.shadow, 45);
+    if (o.textShadowBlur == null) o.textShadowBlur = Number((o.shadow && o.shadow.blur) || 8);
+    if (o.textShadowX == null) o.textShadowX = Number((o.shadow && o.shadow.offsetX) || 2);
+    if (o.textShadowY == null) o.textShadowY = Number((o.shadow && o.shadow.offsetY) || 2);
+  }
+
+  function applyTextFxToObject(o) {
+    if (!isTextObj(o)) return;
+    hydrateTextFxState(o);
+    o.set("fill", fillToHex(o.fill, "#1e293b"));
+    o.set("textBackgroundColor", o.textBgEnabled ? o.textBgColor : "");
+    o.set("stroke", o.textOutlineWidth > 0 ? o.textOutlineColor : null);
+    o.set("strokeWidth", o.textOutlineWidth > 0 ? Number(o.textOutlineWidth || 0) : 0);
+    if (o.textShadowEnabled) {
+      o.set(
+        "shadow",
+        new fabric.Shadow({
+          color: hexToRgba(o.textShadowColor, o.textShadowOpacity),
+          blur: Number(o.textShadowBlur || 0),
+          offsetX: Number(o.textShadowX || 0),
+          offsetY: Number(o.textShadowY || 0),
+        })
+      );
+    } else if (o.textDoubleEnabled && Number(o.textDoubleWidth || 0) > 0) {
+      o.set(
+        "shadow",
+        new fabric.Shadow({
+          color: o.textDoubleColor,
+          blur: Math.max(1, Number(o.textDoubleWidth || 0) * 2),
+          offsetX: 0,
+          offsetY: 0,
+        })
+      );
+    } else {
+      o.set("shadow", null);
+    }
+  }
+
+  function syncTextFxInputs(o) {
+    const wrap = document.getElementById("ins-text-effects-wrap");
+    if (!wrap || wrap.hidden || !isTextObj(o)) return;
+    hydrateTextFxState(o);
+    document.getElementById("ins-text-color").value = fillToHex(o.fill, "#1e293b");
+    document.getElementById("ins-text-bg-enabled").checked = !!o.textBgEnabled;
+    document.getElementById("ins-text-bg").value = o.textBgColor || "#ffffff";
+    document.getElementById("ins-text-outline-color").value = o.textOutlineColor || "#000000";
+    document.getElementById("ins-text-outline-width").value = String(Number(o.textOutlineWidth || 0));
+    document.getElementById("ins-text-outline-width-num").value = String(Number(o.textOutlineWidth || 0));
+    document.getElementById("ins-text-double-enabled").checked = !!o.textDoubleEnabled;
+    document.getElementById("ins-text-double-color").value = o.textDoubleColor || "#111111";
+    document.getElementById("ins-text-double-width").value = String(Number(o.textDoubleWidth || 0));
+    document.getElementById("ins-text-double-width-num").value = String(Number(o.textDoubleWidth || 0));
+    document.getElementById("ins-text-shadow-enabled").checked = !!o.textShadowEnabled;
+    syncShadowStyleButtons(o);
+    document.getElementById("ins-text-shadow-color").value = o.textShadowColor || "#000000";
+    document.getElementById("ins-text-shadow-opacity").value = String(Number(o.textShadowOpacity || 0));
+    document.getElementById("ins-text-shadow-opacity-num").value = String(Number(o.textShadowOpacity || 0));
+    document.getElementById("ins-text-shadow-blur").value = String(Number(o.textShadowBlur || 0));
+    document.getElementById("ins-text-shadow-blur-num").value = String(Number(o.textShadowBlur || 0));
+    document.getElementById("ins-text-shadow-x").value = String(Number(o.textShadowX || 0));
+    document.getElementById("ins-text-shadow-y").value = String(Number(o.textShadowY || 0));
+    const outlineVal = document.getElementById("ins-text-outline-width-val");
+    const doubleVal = document.getElementById("ins-text-double-width-val");
+    const shadowOpacityVal = document.getElementById("ins-text-shadow-opacity-val");
+    const shadowBlurVal = document.getElementById("ins-text-shadow-blur-val");
+    if (outlineVal) outlineVal.textContent = String(Number(o.textOutlineWidth || 0)) + "px";
+    if (doubleVal) doubleVal.textContent = String(Number(o.textDoubleWidth || 0)) + "px";
+    if (shadowOpacityVal) shadowOpacityVal.textContent = String(Number(o.textShadowOpacity || 0)) + "%";
+    if (shadowBlurVal) shadowBlurVal.textContent = String(Number(o.textShadowBlur || 0)) + "px";
+  }
+
+  function applyTextFxFromInspector() {
+    const o = getActiveTarget();
+    if (!isTextObj(o)) return;
+    hydrateTextFxState(o);
+    o.set("fill", document.getElementById("ins-text-color").value || "#1e293b");
+    o.textBgEnabled = !!document.getElementById("ins-text-bg-enabled").checked;
+    o.textBgColor = document.getElementById("ins-text-bg").value || "#ffffff";
+    o.textOutlineColor = document.getElementById("ins-text-outline-color").value || "#000000";
+    o.textOutlineWidth = Number(document.getElementById("ins-text-outline-width-num").value || document.getElementById("ins-text-outline-width").value || 0);
+    o.textDoubleEnabled = !!document.getElementById("ins-text-double-enabled").checked;
+    o.textDoubleColor = document.getElementById("ins-text-double-color").value || "#111111";
+    o.textDoubleWidth = Number(document.getElementById("ins-text-double-width-num").value || document.getElementById("ins-text-double-width").value || 0);
+    o.textShadowEnabled = !!document.getElementById("ins-text-shadow-enabled").checked;
+    o.textShadowStyle = o.textShadowStyle || "soft";
+    o.textShadowColor = document.getElementById("ins-text-shadow-color").value || "#000000";
+    o.textShadowOpacity = Number(document.getElementById("ins-text-shadow-opacity-num").value || document.getElementById("ins-text-shadow-opacity").value || 0);
+    o.textShadowBlur = Number(document.getElementById("ins-text-shadow-blur-num").value || document.getElementById("ins-text-shadow-blur").value || 0);
+    o.textShadowX = Number(document.getElementById("ins-text-shadow-x").value || 0);
+    o.textShadowY = Number(document.getElementById("ins-text-shadow-y").value || 0);
+    if (o.textShadowEnabled) o.textDoubleEnabled = false;
+    applyTextFxToObject(o);
+    canvas.requestRenderAll();
+    scheduleHistory();
+    updateInspector();
+  }
+
   function syncTextStyleToolbar(o) {
     const wrap = document.getElementById("ins-text-para-wrap");
     if (!wrap || wrap.hidden) return;
@@ -2492,27 +2679,31 @@
     empty.hidden = true;
     panel.hidden = false;
 
-    const isText = o.type === "i-text" || o.type === "text" || o.type === "textbox";
+    const isText = isTextObj(o);
     const isLine = o.type === "line";
     const isImage = o.type === "image";
 
     document.getElementById("ins-text-wrap").hidden = !isText;
     const paraWrap = document.getElementById("ins-text-para-wrap");
     if (paraWrap) paraWrap.hidden = !isText;
+    const fxWrap = document.getElementById("ins-text-effects-wrap");
+    if (fxWrap) fxWrap.hidden = !isText;
     document.getElementById("ins-font-wrap").hidden = !isText;
     document.getElementById("ins-size-wrap").hidden = !isText;
-    document.getElementById("ins-stroke-wrap").hidden = isImage;
-    document.getElementById("ins-stroke-w-wrap").hidden = isImage;
+    document.getElementById("ins-stroke-wrap").hidden = isText;
+    document.getElementById("ins-stroke-w-wrap").hidden = isText;
 
     if (isText) {
       document.getElementById("ins-text").value = o.text || "";
       document.getElementById("ins-font").value = o.fontFamily || FONTS[0].v;
       const fs = Math.round(o.fontSize || 48);
       document.getElementById("ins-font-size").value = String(fs);
+      document.getElementById("ins-font-size-num").value = String(fs);
       document.getElementById("ins-size-val").textContent = fs + "px";
       const q = (document.getElementById("ins-font-search").value || "").trim();
       renderFontPreviewList(q);
       syncTextStyleToolbar(o);
+      syncTextFxInputs(o);
     }
 
     const fill = o.fill;
@@ -2529,9 +2720,13 @@
     document.getElementById("ins-stroke-width").value = String(
       o.strokeWidth != null ? o.strokeWidth : isLine ? 4 : 0
     );
+    document.getElementById("ins-stroke-width-num").value = String(
+      o.strokeWidth != null ? o.strokeWidth : isLine ? 4 : 0
+    );
 
     const op = Math.round((o.opacity != null ? o.opacity : 1) * 100);
     document.getElementById("ins-opacity").value = String(op);
+    document.getElementById("ins-opacity-num").value = String(op);
     const sw = Math.max(1, Math.round(o.getScaledWidth ? o.getScaledWidth() : o.width || 1));
     const sh = Math.max(1, Math.round(o.getScaledHeight ? o.getScaledHeight() : o.height || 1));
     document.getElementById("ins-width").value = String(sw);
@@ -4951,10 +5146,22 @@
       if (o && (o.type === "i-text" || o.type === "text" || o.type === "textbox")) {
         const v = parseInt(e.target.value, 10) || 8;
         o.set("fontSize", v);
+        document.getElementById("ins-font-size-num").value = String(v);
         document.getElementById("ins-size-val").textContent = v + "px";
         canvas.requestRenderAll();
         scheduleHistory();
       }
+    });
+    document.getElementById("ins-font-size-num").addEventListener("input", (e) => {
+      const o = getActiveTarget();
+      if (!(o && (o.type === "i-text" || o.type === "text" || o.type === "textbox"))) return;
+      const v = Math.max(8, Math.min(200, parseInt(e.target.value, 10) || 8));
+      e.target.value = String(v);
+      document.getElementById("ins-font-size").value = String(v);
+      o.set("fontSize", v);
+      document.getElementById("ins-size-val").textContent = v + "px";
+      canvas.requestRenderAll();
+      scheduleHistory();
     });
 
     document.querySelectorAll("[data-text-align]").forEach((btn) => {
@@ -4995,7 +5202,10 @@
       const o = getActiveTarget();
       if (!o) return;
       if (o.type === "line") o.set("stroke", e.target.value);
-      else o.set("fill", e.target.value);
+      else if (isTextObj(o)) {
+        o.set("fill", e.target.value);
+        hydrateTextFxState(o);
+      } else o.set("fill", e.target.value);
       canvas.requestRenderAll();
       scheduleHistory();
     });
@@ -5010,16 +5220,124 @@
 
     document.getElementById("ins-stroke-width").addEventListener("input", (e) => {
       const o = getActiveTarget();
-      if (!o || o.type === "image") return;
-      o.set("strokeWidth", parseFloat(e.target.value) || 0);
+      if (!o) return;
+      const v = parseFloat(e.target.value) || 0;
+      document.getElementById("ins-stroke-width-num").value = String(v);
+      o.set("strokeWidth", v);
+      if (o.type === "image" && !o.stroke) o.set("stroke", "#000000");
       canvas.requestRenderAll();
       scheduleHistory();
+    });
+    document.getElementById("ins-stroke-width-num").addEventListener("input", (e) => {
+      const o = getActiveTarget();
+      if (!o) return;
+      const v = Math.max(0, Math.min(40, parseFloat(e.target.value) || 0));
+      e.target.value = String(v);
+      document.getElementById("ins-stroke-width").value = String(v);
+      o.set("strokeWidth", v);
+      if (o.type === "image" && !o.stroke) o.set("stroke", "#000000");
+      canvas.requestRenderAll();
+      scheduleHistory();
+    });
+
+    [
+      "ins-text-color",
+      "ins-text-bg-enabled",
+      "ins-text-bg",
+      "ins-text-outline-color",
+      "ins-text-double-enabled",
+      "ins-text-double-color",
+      "ins-text-shadow-enabled",
+      "ins-text-shadow-color",
+      "ins-text-shadow-x",
+      "ins-text-shadow-y",
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const evt = el.type === "number" || el.type === "range" || el.type === "color" ? "input" : "change";
+      el.addEventListener(evt, applyTextFxFromInspector);
+      if (evt !== "change") el.addEventListener("change", applyTextFxFromInspector);
+    });
+
+    [
+      ["ins-text-outline-width", "ins-text-outline-width-num"],
+      ["ins-text-double-width", "ins-text-double-width-num"],
+      ["ins-text-shadow-opacity", "ins-text-shadow-opacity-num"],
+      ["ins-text-shadow-blur", "ins-text-shadow-blur-num"],
+    ].forEach(([rangeId, numId]) => {
+      const rangeEl = document.getElementById(rangeId);
+      const numEl = document.getElementById(numId);
+      if (!rangeEl || !numEl) return;
+      const min = Number(rangeEl.min || 0);
+      const max = Number(rangeEl.max || 9999);
+      const clamp = (v) => {
+        if (!Number.isFinite(v)) return min;
+        return Math.max(min, Math.min(max, v));
+      };
+      rangeEl.addEventListener("input", () => {
+        numEl.value = rangeEl.value;
+        applyTextFxFromInspector();
+      });
+      rangeEl.addEventListener("change", () => {
+        numEl.value = rangeEl.value;
+        applyTextFxFromInspector();
+      });
+      numEl.addEventListener("input", () => {
+        const v = clamp(Number(numEl.value));
+        rangeEl.value = String(v);
+        numEl.value = String(v);
+        applyTextFxFromInspector();
+      });
+      numEl.addEventListener("change", () => {
+        const v = clamp(Number(numEl.value));
+        rangeEl.value = String(v);
+        numEl.value = String(v);
+        applyTextFxFromInspector();
+      });
+    });
+
+    document.querySelectorAll("[data-shadow-style]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const o = getActiveTarget();
+        if (!isTextObj(o)) return;
+        const style = btn.getAttribute("data-shadow-style");
+        if (!style) return;
+        hydrateTextFxState(o);
+        o.textShadowEnabled = true;
+        o.textDoubleEnabled = false;
+        o.textShadowStyle = style;
+        if (style === "long") {
+          o.textShadowX = Number(o.textShadowX || 14);
+          o.textShadowY = Number(o.textShadowY || 14);
+          o.textShadowBlur = Math.max(0, Number(o.textShadowBlur || 0));
+        } else {
+          o.textShadowX = Number(o.textShadowX || 2);
+          o.textShadowY = Number(o.textShadowY || 2);
+          o.textShadowBlur = Math.max(4, Number(o.textShadowBlur || 8));
+        }
+        applyTextFxToObject(o);
+        canvas.requestRenderAll();
+        flushHistory();
+        syncTextFxInputs(o);
+      });
     });
 
     document.getElementById("ins-opacity").addEventListener("input", (e) => {
       const o = getActiveTarget();
       if (!o) return;
-      o.set("opacity", (parseInt(e.target.value, 10) || 0) / 100);
+      const v = Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0));
+      document.getElementById("ins-opacity-num").value = String(v);
+      o.set("opacity", v / 100);
+      canvas.requestRenderAll();
+      scheduleHistory();
+    });
+    document.getElementById("ins-opacity-num").addEventListener("input", (e) => {
+      const o = getActiveTarget();
+      if (!o) return;
+      const v = Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0));
+      e.target.value = String(v);
+      document.getElementById("ins-opacity").value = String(v);
+      o.set("opacity", v / 100);
       canvas.requestRenderAll();
       scheduleHistory();
     });
