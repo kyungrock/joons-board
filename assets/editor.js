@@ -2626,7 +2626,18 @@
     const o = getActiveTarget();
     if (!isTextObj(o)) return;
     hydrateTextFxState(o);
-    o.set("fill", document.getElementById("ins-text-color").value || "#1e293b");
+    const nextTextColor = document.getElementById("ins-text-color").value || "#1e293b";
+    const hasRangeSelection =
+      o.type === "i-text" &&
+      o.isEditing &&
+      Number.isInteger(o.selectionStart) &&
+      Number.isInteger(o.selectionEnd) &&
+      o.selectionStart !== o.selectionEnd;
+    if (hasRangeSelection && typeof o.setSelectionStyles === "function") {
+      o.setSelectionStyles({ fill: nextTextColor }, o.selectionStart, o.selectionEnd);
+    } else {
+      o.set("fill", nextTextColor);
+    }
     o.textBgEnabled = !!document.getElementById("ins-text-bg-enabled").checked;
     o.textBgColor = document.getElementById("ins-text-bg").value || "#ffffff";
     o.textOutlineColor = document.getElementById("ins-text-outline-color").value || "#000000";
@@ -5207,7 +5218,17 @@
       if (!o) return;
       if (o.type === "line") o.set("stroke", e.target.value);
       else if (isTextObj(o)) {
-        o.set("fill", e.target.value);
+        const hasRangeSelection =
+          o.type === "i-text" &&
+          o.isEditing &&
+          Number.isInteger(o.selectionStart) &&
+          Number.isInteger(o.selectionEnd) &&
+          o.selectionStart !== o.selectionEnd;
+        if (hasRangeSelection && typeof o.setSelectionStyles === "function") {
+          o.setSelectionStyles({ fill: e.target.value }, o.selectionStart, o.selectionEnd);
+        } else {
+          o.set("fill", e.target.value);
+        }
         hydrateTextFxState(o);
       } else o.set("fill", e.target.value);
       canvas.requestRenderAll();
