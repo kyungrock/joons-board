@@ -50,6 +50,166 @@
     "mdi:triangle",
     "mdi:shape-outline",
     "mdi:shape-plus",
+    "mdi:vector-line",
+    "mdi:vector-polyline",
+    "mdi:vector-radius",
+    "mdi:vector-union",
+    "mdi:minus",
+    "mdi:minus-thick",
+    "mdi:slash-forward",
+    "mdi:slash-forward-box",
+    "mdi:border-horizontal",
+    "mdi:border-vertical",
+    "mdi:border-style",
+    "mdi:chart-line",
+    "mdi:chart-timeline-variant",
+    "mdi:timeline-outline",
+    "mdi:timeline-clock-outline",
+    "mdi:ray-start-arrow",
+    "mdi:ray-end-arrow",
+    "mdi:ray-start-end",
+    "mdi:sign-direction",
+    "mdi:road-variant",
+    "mdi:vector-curve",
+    "mdi:bezier-curve",
+    "mdi:sine-wave",
+    "mdi:waves",
+    "mdi:dots-horizontal",
+    "mdi:dots-vertical",
+    "mdi:drag-horizontal-variant",
+    "mdi:drag-vertical-variant",
+    "mdi:numeric",
+    "mdi:numeric-0",
+    "mdi:numeric-1",
+    "mdi:numeric-2",
+    "mdi:numeric-3",
+    "mdi:numeric-4",
+    "mdi:numeric-5",
+    "mdi:numeric-6",
+    "mdi:numeric-7",
+    "mdi:numeric-8",
+    "mdi:numeric-9",
+    "mdi:numeric-0-box-outline",
+    "mdi:numeric-1-box-outline",
+    "mdi:numeric-2-box-outline",
+    "mdi:numeric-3-box-outline",
+    "mdi:numeric-4-box-outline",
+    "mdi:numeric-5-box-outline",
+    "mdi:numeric-6-box-outline",
+    "mdi:numeric-7-box-outline",
+    "mdi:numeric-8-box-outline",
+    "mdi:numeric-9-box-outline",
+    "mdi:numeric-0-circle-outline",
+    "mdi:numeric-1-circle-outline",
+    "mdi:numeric-9-plus-circle-outline",
+    "mdi:counter",
+    "mdi:sort-numeric-ascending",
+    "mdi:format-list-numbered",
+    "mdi:calculator",
+    "mdi:calculator-variant",
+    "mdi:percent-outline",
+    "mdi:plus",
+    "mdi:plus-thick",
+    "mdi:plus-box-outline",
+    "mdi:minus-box-outline",
+    "mdi:close-thick",
+    "mdi:close-box-outline",
+    "mdi:multiplication",
+    "mdi:division",
+    "mdi:equal",
+    "mdi:approximately-equal",
+    "mdi:infinity",
+    "mdi:pi",
+    "mdi:sigma",
+    "mdi:sigma-lower",
+    "mdi:function-variant",
+    "mdi:code-braces",
+    "mdi:code-tags",
+    "mdi:asterisk",
+    "mdi:star-outline",
+    "mdi:star-four-points-outline",
+    "mdi:checkbox-marked-circle-outline",
+    "mdi:check-circle-outline",
+    "mdi:close-circle-outline",
+    "mdi:help-circle-outline",
+    "mdi:information-outline",
+    "mdi:exclamation-thick",
+    "mdi:currency-usd",
+    "mdi:currency-krw",
+    "mdi:percent",
+    "mdi:clock-outline",
+    "mdi:calendar-month-outline",
+    "mdi:email-outline",
+    "mdi:phone-outline",
+    "mdi:link-variant",
+    "mdi:web",
+    "mdi:wifi",
+    "mdi:bluetooth",
+    "mdi:battery-outline",
+    "mdi:lock-outline",
+    "mdi:lock-open-outline",
+    "mdi:account-outline",
+    "mdi:account-group-outline",
+    "mdi:file-document-outline",
+    "mdi:folder-outline",
+    "mdi:image-outline",
+    "mdi:music-note-outline",
+    "mdi:play",
+    "mdi:pause",
+    "mdi:stop",
+    "mdi:skip-next",
+    "mdi:skip-previous",
+    "mdi:cog-outline",
+    "mdi:tune-vertical",
+    "mdi:palette-outline",
+    "mdi:brush-variant",
+    "mdi:format-color-fill",
+    "mdi:format-bold",
+    "mdi:format-italic",
+    "mdi:format-underline",
+    "mdi:format-size",
+    "mdi:format-header-1",
+    "mdi:format-header-2",
+    "mdi:format-header-3",
+    "mdi:format-list-bulleted",
+    "mdi:format-list-checks",
+    "mdi:grid",
+    "mdi:view-grid-outline",
+    "mdi:table-border",
+    "mdi:qrcode",
+    "mdi:barcode",
+    "mdi:flag-outline",
+    "mdi:bookmark-outline",
+    "mdi:tag-outline",
+    "mdi:lightbulb-outline",
+    "mdi:flash-outline",
+    "mdi:fire",
+    "mdi:water-outline",
+    "mdi:leaf",
+    "mdi:flower",
+    "mdi:human",
+    "mdi:baby-face-outline",
+    "mdi:face-man-outline",
+    "mdi:emoticon-happy-outline",
+    "mdi:thumb-up-outline",
+    "mdi:thumb-down-outline",
+    "mdi:gift-outline",
+    "mdi:cake-variant-outline",
+    "mdi:coffee-outline",
+    "mdi:beer-outline",
+    "mdi:medical-bag",
+    "mdi:pill",
+    "mdi:bandage",
+    "mdi:school-outline",
+    "mdi:book-open-page-variant",
+    "mdi:pencil-outline",
+    "mdi:eraser-variant",
+    "mdi:ruler",
+    "mdi:triangle-small-down",
+    "mdi:hexagon-outline",
+    "mdi:octagon-outline",
+    "mdi:pentagon-outline",
+    "mdi:rhombus-outline",
   ];
   const ICON_COLOR_POOL = [
     "twemoji:automobile",
@@ -119,7 +279,40 @@
     "noto:large-red-square",
     "noto:large-blue-square",
     "noto:up-pointing-red-triangle",
-  ];
+    "twemoji:input-numbers",
+    "twemoji:keycap-0",
+    "twemoji:keycap-1",
+    "twemoji:keycap-2",
+    "twemoji:keycap-3",
+    "twemoji:keycap-4",
+    "twemoji:keycap-5",
+    "twemoji:keycap-6",
+    "twemoji:keycap-7",
+    "twemoji:keycap-8",
+    "twemoji:keycap-9",
+    "twemoji:keycap-10",
+    "twemoji:heavy-minus-sign",
+    "twemoji:heavy-plus-sign",
+    "twemoji:heavy-multiplication-x",
+    "twemoji:heavy-division-sign",
+    "twemoji:heavy-equals-sign",
+    "twemoji:black-rightwards-arrow",
+    "twemoji:left-right-arrow",
+    "twemoji:up-down-arrow",
+    "twemoji:chart-increasing",
+    "twemoji:straight-ruler",
+    "twemoji:triangular-ruler",
+    "noto:abacus",
+    "noto:input-numbers",
+    "fluent-emoji-flat:input-numbers",
+    "fluent-emoji-flat:plus",
+    "fluent-emoji-flat:minus",
+    "fluent-emoji-flat:multiply",
+    "fluent-emoji-flat:divide",
+    "fluent-emoji-flat:heavy-equals-sign",
+    "fluent-emoji-flat:straight-ruler",
+    "fluent-emoji-flat:triangular-ruler",
+ ];
   const ICON_KR_QUERY_MAP = {
     자동차: ["car", "automobile", "vehicle", "taxi", "truck"],
     차량: ["car", "vehicle", "truck", "sedan"],
@@ -154,6 +347,48 @@
     네모: ["square", "rectangle", "box"],
     삼각형: ["triangle", "delta", "polygon"],
     도형: ["shape", "circle", "square", "triangle", "polygon"],
+    라인: ["line", "stroke", "vector-line", "polyline", "minus"],
+    직선: ["line", "straight line", "vector-line", "minus", "horizontal rule"],
+    곡선: ["curve", "bezier", "spline", "wave"],
+    점선: ["dashed line", "dash", "dotted line", "line dashed"],
+    선분: ["line segment", "vector-line", "ray"],
+    숫자: ["number", "numeric", "digit", "counter", "123", "sort numeric"],
+    번호: ["number", "numeric", "digit", "keycap", "input numbers"],
+    카운트: ["counter", "count", "abacus", "numeric"],
+    계산: ["calculator", "math", "calculate", "compute"],
+    수학: ["math", "algebra", "geometry", "formula", "equation"],
+    기호: ["symbol", "sign", "glyph", "punctuation", "operator"],
+    퍼센트: ["percent", "percentage", "ratio"],
+    체크: ["check", "tick", "done", "verify", "checkbox"],
+    별: ["star", "asterisk", "sparkle", "rating"],
+    하트: ["heart", "love", "like"],
+    전화: ["phone", "call", "telephone", "mobile"],
+    이메일: ["email", "mail", "envelope", "message"],
+    시계: ["clock", "time", "watch", "alarm"],
+    달력: ["calendar", "date", "schedule", "event"],
+    돈: ["money", "currency", "dollar", "coin", "cash"],
+    사람: ["person", "user", "account", "human", "people"],
+    잠금: ["lock", "secure", "privacy", "password"],
+    설정: ["settings", "gear", "cog", "preferences", "tune"],
+    문서: ["document", "file", "paper", "text file"],
+    폴더: ["folder", "directory", "archive"],
+    링크: ["link", "chain", "hyperlink", "url"],
+    와이파이: ["wifi", "wireless", "internet", "signal"],
+    블루투스: ["bluetooth", "wireless"],
+    배터리: ["battery", "power", "charge", "energy"],
+    재생: ["play", "media", "video", "start"],
+    음표: ["music", "note", "audio", "melody"],
+    연필: ["pencil", "edit", "draw", "write"],
+    줄자: ["ruler", "measure", "straight ruler"],
+    그리드: ["grid", "table", "layout", "matrix"],
+    QR: ["qrcode", "qr code", "barcode"],
+    깃발: ["flag", "banner", "mark"],
+    선물: ["gift", "present", "package"],
+    커피: ["coffee", "cup", "cafe", "drink"],
+    물음표: ["question", "help", "faq", "unknown"],
+    느낌표: ["exclamation", "alert", "warning", "notice"],
+    무한: ["infinity", "endless", "loop"],
+    파이: ["pi", "circle constant", "math"],
   };
 
   let canvas;
@@ -285,7 +520,21 @@
     try {
       const raw = localStorage.getItem(MY_FILE_KEY);
       const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
+      const list = Array.isArray(arr) ? arr : [];
+      let changed = false;
+      for (let i = 0; i < list.length; i++) {
+        const x = list[i];
+        if (!x || typeof x !== "object") continue;
+        if (!x.id) {
+          x.id =
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : "mf-" + Date.now() + "-" + i + "-" + Math.random().toString(16).slice(2, 8);
+          changed = true;
+        }
+      }
+      if (changed) setMyFiles(list);
+      return list;
     } catch {
       return [];
     }
@@ -347,12 +596,34 @@
       return;
     }
     rows.slice(0, 240).forEach((f) => {
-      const card = document.createElement("button");
-      card.type = "button";
-      card.className = "my-file-item";
-      card.innerHTML = `<img src="${f.dataUrl}" alt="${f.name || "file"}" loading="lazy" /><span>${f.name || "파일"}</span>`;
-      card.addEventListener("click", () => addMyFileToCanvas(f.dataUrl));
-      root.appendChild(card);
+      const wrap = document.createElement("div");
+      wrap.className = "my-file-item";
+
+      const main = document.createElement("button");
+      main.type = "button";
+      main.className = "my-file-item-main";
+      main.innerHTML = `<img src="${f.dataUrl}" alt="${f.name || "file"}" loading="lazy" /><span>${f.name || "파일"}</span>`;
+      main.addEventListener("click", () => addMyFileToCanvas(f.dataUrl));
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "my-file-item-delete";
+      del.title = "\ub0b4 \ud30c\uc77c\uc5d0\uc11c \uc0ad\uc81c";
+      del.setAttribute("aria-label", "\uc0ad\uc81c");
+      del.textContent = "\u00d7";
+      del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm("\ub0b4 \ud30c\uc77c\uc5d0\uc11c \uc774 \uc774\ubbf8\uc9c0\ub97c \uc0ad\uc81c\ud560\uae4c\uc694?")) return;
+        const next = getMyFiles().filter((x) => x.id !== f.id);
+        setMyFiles(next);
+        renderMyFileFolders();
+        renderMyFiles();
+        toast("\uc0ad\uc81c\ud588\uc2b5\ub2c8\ub2e4");
+      });
+
+      wrap.appendChild(main);
+      wrap.appendChild(del);
+      root.appendChild(wrap);
     });
   }
 
@@ -433,6 +704,75 @@
     if (addFolderBtn) addFolderBtn.addEventListener("click", createMyFileFolder);
     renderMyFileFolders();
     renderMyFiles();
+  }
+
+  function initRailSlidePanel() {
+    const rail = document.getElementById("editor-rail");
+    const panel = document.getElementById("rail-slide-panel");
+    const titleEl = document.getElementById("rail-slide-title");
+    const closeBtn = document.getElementById("rail-slide-close");
+    if (!rail || !panel || !titleEl || !closeBtn) return;
+
+    const titles = {
+      "rail-pane-shapes": "\ub3c4\ud615 \xb7 \uc120",
+      "rail-pane-icons": "\uc544\uc774\ucf58 \uac80\uc0c9",
+      "rail-pane-upload": "\uc5c5\ub85c\ub4dc \xb7 \ub0b4 \ud30c\uc77c",
+      "rail-pane-wordart": "\ud14d\uc2a4\ud2b8 \xb7 \uc6cc\ub4dc\uc544\ud2b8",
+      "rail-pane-frames": "\ud504\ub808\uc784 \xb7 \uc0ac\uc9c4 \uc601\uc5ed",
+      "rail-pane-templates": "\ud15c\ud50c\ub9bf",
+    };
+
+    const launchers = rail.querySelectorAll("[data-rail-panel]");
+
+    function setLaunchersActive(id) {
+      launchers.forEach((btn) => {
+        const on = Boolean(id) && btn.getAttribute("data-rail-panel") === id;
+        btn.classList.toggle("is-active", on);
+        btn.setAttribute("aria-selected", on ? "true" : "false");
+      });
+    }
+
+    function openRailPanel(paneId) {
+      rail.querySelectorAll(".rail-slide-pane").forEach((pane) => {
+        pane.hidden = pane.id !== paneId;
+      });
+      titleEl.textContent = titles[paneId] || "";
+      rail.classList.add("rail-slide-open");
+      panel.setAttribute("aria-hidden", "false");
+      setLaunchersActive(paneId);
+    }
+
+    function closeRailPanel() {
+      rail.classList.remove("rail-slide-open");
+      panel.setAttribute("aria-hidden", "true");
+      rail.querySelectorAll(".rail-slide-pane").forEach((pane) => {
+        pane.hidden = true;
+      });
+      titleEl.textContent = "";
+      setLaunchersActive(null);
+    }
+
+    launchers.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-rail-panel");
+        if (!id) return;
+        const open = rail.classList.contains("rail-slide-open");
+        const visible = Array.prototype.find.call(rail.querySelectorAll(".rail-slide-pane"), (p) => !p.hidden);
+        if (open && visible && visible.id === id) {
+          closeRailPanel();
+          return;
+        }
+        openRailPanel(id);
+      });
+    });
+
+    closeBtn.addEventListener("click", closeRailPanel);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (!rail.classList.contains("rail-slide-open")) return;
+      closeRailPanel();
+    });
   }
 
   function getCloudCfg() {
@@ -1804,7 +2144,7 @@
       root.innerHTML = `<div class="icon-status">검색 결과가 없습니다</div>`;
       return;
     }
-    uniq.slice(0, 120).forEach((name) => {
+    uniq.slice(0, 200).forEach((name) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "icon-item";
@@ -1819,7 +2159,8 @@
     const q = String(raw || "").trim();
     if (!q) return [];
     const terms = [q];
-    Object.keys(ICON_KR_QUERY_MAP).forEach((k) => {
+    const keys = Object.keys(ICON_KR_QUERY_MAP).sort((a, b) => b.length - a.length);
+    keys.forEach((k) => {
       if (q.includes(k)) terms.push(...ICON_KR_QUERY_MAP[k]);
     });
     if (/^[가-힣\s]+$/.test(q) && terms.length === 1) {
@@ -1830,6 +2171,73 @@
 
   function pickColorPool(terms) {
     const t = terms.join(" ").toLowerCase();
+    if (
+      t.includes("number") ||
+      t.includes("numeric") ||
+      t.includes("digit") ||
+      t.includes("counter") ||
+      t.includes("keycap") ||
+      t.includes("123") ||
+      t.includes("abacus") ||
+      t.includes("input number") ||
+      t.includes("\uC22B\uC790") ||
+      t.includes("계산") ||
+      t.includes("수학") ||
+      t.includes("번호")
+    ) {
+      return [
+        "twemoji:keycap-0",
+        "twemoji:keycap-1",
+        "twemoji:keycap-2",
+        "twemoji:keycap-3",
+        "twemoji:keycap-4",
+        "twemoji:keycap-5",
+        "twemoji:keycap-6",
+        "twemoji:keycap-7",
+        "twemoji:keycap-8",
+        "twemoji:keycap-9",
+        "twemoji:keycap-10",
+        "twemoji:input-numbers",
+        "noto:abacus",
+        "noto:input-numbers",
+        "fluent-emoji-flat:input-numbers",
+        "fluent-emoji-flat:plus",
+        "fluent-emoji-flat:minus",
+        "fluent-emoji-flat:multiply",
+        "fluent-emoji-flat:divide",
+        "fluent-emoji-flat:heavy-equals-sign",
+      ];
+    }
+    if (
+      t.includes("line") ||
+      t.includes("stroke") ||
+      t.includes("vector") ||
+      t.includes("polyline") ||
+      t.includes("dashed") ||
+      t.includes("dotted") ||
+      t.includes("bezier") ||
+      t.includes("spline") ||
+      t.includes("segment") ||
+      t.includes("horizontal rule") ||
+      t.includes("wave") ||
+      t.includes("minus") ||
+      t.includes("라인") ||
+      t.includes("직선") ||
+      t.includes("\uACE1\uC120") ||
+      t.includes("점선") ||
+      t.includes("선분")
+    ) {
+      return [
+        "twemoji:straight-ruler",
+        "twemoji:triangular-ruler",
+        "twemoji:chart-increasing",
+        "twemoji:heavy-minus-sign",
+        "fluent-emoji-flat:straight-ruler",
+        "fluent-emoji-flat:triangular-ruler",
+        "noto:straight-ruler",
+        "noto:triangular-ruler",
+      ];
+    }
     if (
       t.includes("circle") ||
       t.includes("square") ||
@@ -1925,8 +2333,8 @@
       return;
     }
     const terms = extractSearchTerms(q);
-    const reqs = terms.slice(0, 4).map((term) =>
-      fetch(`https://api.iconify.design/search?query=${encodeURIComponent(term)}&limit=80`)
+    const reqs = terms.slice(0, 6).map((term) =>
+      fetch(`https://api.iconify.design/search?query=${encodeURIComponent(term)}&limit=120`)
         .then((r) => (r.ok ? r.json() : { icons: [] }))
         .catch(() => ({ icons: [] }))
     );
@@ -4263,6 +4671,7 @@
 
     initWordArtButtons();
     initIconSearch();
+    initRailSlidePanel();
     initMyFilesPanel();
     ensureFolders();
     renderFolderSelect();

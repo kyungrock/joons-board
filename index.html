@@ -1,323 +1,342 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="브라우저에서 포스터·SNS 이미지·썸네일을 만드는 캔버스 디자인 도구" />
-  <title>준스보드 — 디자인 보드</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Anton&family=Bangers&family=Bebas+Neue&family=Black+And+White+Picture&family=Black+Han+Sans&family=Caveat:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Dongle:wght@300;400;700&family=Do+Hyeon&family=Fira+Sans:wght@400;500;700&family=Gaegu:wght@300;400;700&family=Gamja+Flower&family=Gowun+Batang:wght@400;700&family=Gugi&family=Hahmlet:wght@400;600;700&family=Hi+Melody&family=IBM+Plex+Sans+KR:wght@400;500;700&family=Inter:wght@400;500;700;800&family=Jua&family=Lato:wght@400;700;900&family=Merriweather:wght@400;700;900&family=Montserrat:wght@400;500;700;800&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500;600;700;800&family=Noto+Serif+KR:wght@400;600;700;900&family=Nunito:wght@400;600;700;800&family=Oswald:wght@400;500;700&family=Pacifico&family=Playfair+Display:wght@400;600;700;800&family=Poor+Story&family=Poppins:wght@400;500;700;800&family=Roboto+Slab:wght@400;500;700;800&family=Rubik:wght@400;500;700;800&family=Single+Day&family=Sunflower:wght@300;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/style.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gifshot@0.4.5/build/gifshot.min.js"></script>
-  <script src="assets/editor.js" defer></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="브라우저에서 포스터·SNS 이미지·썸네일을 만드는 캔버스 디자인 도구" />
+<title>준스보드 — 디자인 보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Anton&family=Bangers&family=Bebas+Neue&family=Black+And+White+Picture&family=Black+Han+Sans&family=Caveat:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Dongle:wght@300;400;700&family=Do+Hyeon&family=Fira+Sans:wght@400;500;700&family=Gaegu:wght@300;400;700&family=Gamja+Flower&family=Gowun+Batang:wght@400;700&family=Gugi&family=Hahmlet:wght@400;600;700&family=Hi+Melody&family=IBM+Plex+Sans+KR:wght@400;500;700&family=Inter:wght@400;500;700;800&family=Jua&family=Lato:wght@400;700;900&family=Merriweather:wght@400;700;900&family=Montserrat:wght@400;500;700;800&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500;600;700;800&family=Noto+Serif+KR:wght@400;600;700;900&family=Nunito:wght@400;600;700;800&family=Oswald:wght@400;500;700&family=Pacifico&family=Playfair+Display:wght@400;600;700;800&family=Poor+Story&family=Poppins:wght@400;500;700;800&family=Roboto+Slab:wght@400;500;700;800&family=Rubik:wght@400;500;700;800&family=Single+Day&family=Sunflower:wght@300;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gifshot@0.4.5/build/gifshot.min.js"></script>
+<script src="assets/editor.js" defer></script>
 </head>
 <body class="editor-body">
-  <a class="skip-link" href="#viewport">캔버스 영역으로</a>
-  <div class="editor-app" id="editor-app">
-    <header class="editor-topbar">
-      <div class="topbar-left">
-        <div class="logo">
-          <span class="logo-icon" aria-hidden="true">▣</span>
-          <div>
-            <strong>준스보드</strong>
-            <span class="logo-tag">디자인 보드</span>
-          </div>
-        </div>
-        <label class="field-inline">
-          <span class="sr-only">캔버스 크기</span>
-          <select id="preset-size" class="select compact" title="캔버스 크기"></select>
-        </label>
-        <div class="slide-size-inline" title="슬라이드 크기">
-          <input type="number" id="slide-width" class="input number-xs" min="64" max="8000" step="1" />
-          <span>×</span>
-          <input type="number" id="slide-height" class="input number-xs" min="64" max="8000" step="1" />
-          <button type="button" class="btn btn-sm" id="btn-apply-slide-size">크기 적용</button>
-        </div>
-        <div class="slide-actions">
-          <span class="slide-label" id="slide-label">슬라이드 1 / 1</span>
-          <button type="button" class="btn btn-sm" id="btn-slide-move-prev" title="슬라이드를 이전 순서로 이동">순서 ↑</button>
-          <button type="button" class="btn btn-sm" id="btn-slide-move-next" title="슬라이드를 다음 순서로 이동">순서 ↓</button>
-          <button type="button" class="btn btn-sm" id="btn-slide-dup" title="슬라이드 복사">복사</button>
-          <button type="button" class="btn btn-sm" id="btn-slide-add" title="슬라이드 추가">추가</button>
-          <button type="button" class="btn btn-sm btn-danger" id="btn-slide-del" title="슬라이드 지우기">지우기</button>
-        </div>
-        <label class="field-inline color-field">
-          <span>배경</span>
-          <input type="color" id="canvas-bg" value="#ffffff" title="캔버스 배경색" />
-        </label>
-      </div>
-      <div class="topbar-center">
-        <div class="zoom-control">
-          <button type="button" class="btn-icon" id="zoom-out" title="축소">−</button>
-          <span id="zoom-label" class="zoom-label">100%</span>
-          <button type="button" class="btn-icon" id="zoom-in" title="확대">+</button>
-          <button type="button" class="btn-text" id="zoom-fit" title="화면에 맞춤">맞춤</button>
-        </div>
-      </div>
-      <div class="topbar-right">
-        <button type="button" class="btn btn-ghost" id="btn-undo" title="실행 취소 (Ctrl+Z)">↶ 실행 취소</button>
-        <button type="button" class="btn btn-ghost" id="btn-redo" title="다시 실행 (Ctrl+Y)">↷ 다시 실행</button>
-        <button type="button" class="btn btn-ghost" id="btn-theme" title="테마"><span class="icon-theme" aria-hidden="true"></span></button>
-        <button type="button" class="btn btn-primary" id="btn-export-png">다운로드</button>
-      </div>
-    </header>
-    <div class="editor-body-row">
-      <aside class="editor-rail" aria-label="도구 및 템플릿, 나의 작업">
-        <div class="rail-scroll">
-          <div class="rail-section rail-section-work">
-            <h2 class="rail-title work-title-click" id="work-title-click">나의 작업</h2>
-            <p class="rail-hint">이 브라우저에 저장됩니다. 이름을 정하고 저장하세요.</p>
-            <input type="text" id="project-name" class="input input-compact" placeholder="작업 이름" maxlength="80" autocomplete="off" />
-            <select id="project-folder" class="select input-compact" title="저장 폴더"></select>
-            <div class="work-actions">
-              <button type="button" class="btn btn-sm" id="btn-new-project" title="새 캔버스">새 프로젝트</button>
-              <button type="button" class="btn btn-sm btn-primary" id="btn-save-project">저장</button>
-            </div>
-            <button type="button" class="btn btn-sm work-browser-open" id="btn-open-work-browser">내 작업 보기</button>
-            <ul class="work-list" id="work-list" aria-label="저장된 작업 목록"></ul>
-            <details class="cloud-box">
-              <summary class="cloud-title">클라우드 저장 (Supabase)</summary>
-              <p class="rail-hint">로그인하면 PC가 바뀌어도 작업을 불러올 수 있습니다.</p>
-              <input type="text" id="cloud-url" class="input input-compact" placeholder="Supabase URL" autocomplete="off" value="https://laxhdswhxogdkjbrcaqc.supabase.co" />
-              <input type="text" id="cloud-anon" class="input input-compact" placeholder="Supabase Anon Key" autocomplete="off" value="sb_publishable_HOsV8EqyvXF6P4oThx4ldw_tqDCDr6P" />
-              <button type="button" class="btn btn-sm" id="cloud-connect">클라우드 연결</button>
-              <div class="cloud-auth-row">
-                <input type="email" id="cloud-email" class="input" placeholder="이메일" autocomplete="email" />
-                <input type="password" id="cloud-password" class="input" placeholder="비밀번호" autocomplete="current-password" />
-              </div>
-              <div class="cloud-actions">
-                <button type="button" class="btn btn-sm" id="cloud-signup">회원가입</button>
-                <button type="button" class="btn btn-sm" id="cloud-login">로그인</button>
-                <button type="button" class="btn btn-sm" id="cloud-logout">로그아웃</button>
-              </div>
-              <div class="cloud-actions">
-                <button type="button" class="btn btn-sm btn-primary" id="cloud-save-now">클라우드 저장</button>
-                <button type="button" class="btn btn-sm" id="cloud-pull">클라우드 불러오기</button>
-              </div>
-              <p class="cloud-status" id="cloud-status">클라우드 미연결</p>
-            </details>
-          </div>
-          <div class="rail-section">
-            <h2 class="rail-title">기본 도구</h2>
-            <div class="tool-grid tool-grid-basic" id="tool-grid-basic">
-              <button type="button" class="tool-btn active" data-tool="select" title="선택 (V)"><span class="tool-ic">↖</span><span>선택</span></button>
-              <button type="button" class="tool-btn" data-tool="text" title="텍스트 (T)"><span class="tool-ic">T</span><span>텍스트</span></button>
-              <label class="tool-btn tool-file" title="이미지 업로드">
-                <input type="file" id="img-upload" accept="image/*" hidden />
-                <span class="tool-ic">🖼</span><span>이미지</span>
-              </label>
-            </div>
-          </div>
-          <details class="rail-details" open>
-            <summary class="rail-details-summary">도형 · 선</summary>
-            <p class="rail-hint rail-hint-tight">도구를 고른 후 캔버스를 클릭합니다.</p>
-            <div class="tool-grid" id="tool-grid-shapes">
-              <button type="button" class="tool-btn" data-tool="rect" title="사각형"><span class="tool-ic">▭</span><span>사각형</span></button>
-              <button type="button" class="tool-btn" data-tool="circle" title="원"><span class="tool-ic">○</span><span>원</span></button>
-              <button type="button" class="tool-btn" data-tool="ellipse" title="타원"><span class="tool-ic">⬭</span><span>타원</span></button>
-              <button type="button" class="tool-btn" data-tool="triangle" title="삼각형"><span class="tool-ic">△</span><span>삼각형</span></button>
-              <button type="button" class="tool-btn" data-tool="diamond" title="다이아몰드"><span class="tool-ic">◇</span><span>다이아몰드</span></button>
-              <button type="button" class="tool-btn" data-tool="star" title="별"><span class="tool-ic">★</span><span>별</span></button>
-              <button type="button" class="tool-btn" data-tool="line" title="직선"><span class="tool-ic">╱</span><span>직선</span></button>
-              <button type="button" class="tool-btn" data-tool="line-dash" title="점선"><span class="tool-ic">⋯</span><span>점선</span></button>
-              <button type="button" class="tool-btn" data-tool="arrow" title="화살표"><span class="tool-ic">➤</span><span>화살표</span></button>
-            </div>
-          </details>
-          <details class="rail-details">
-            <summary class="rail-details-summary">아이콘 검색</summary>
-            <p class="rail-hint rail-hint-tight">예: 자동차, 비행기, 카메라, 지도, 음식</p>
-            <div class="icon-search-row">
-              <input type="text" id="icon-query" class="input input-compact" placeholder="아이콘 검색어" />
-              <button type="button" class="btn btn-sm" id="icon-search-btn">검색</button>
-            </div>
-            <div class="icon-grid" id="icon-grid"></div>
-          </details>
-          <details class="rail-details" open>
-            <summary class="rail-details-summary">업로드 · 내 파일</summary>
-            <p class="rail-hint rail-hint-tight">이미지 업로드 후 폴더로 정리하고 클릭해 삽입하세요.</p>
-            <div class="icon-search-row">
-              <label class="btn btn-sm" style="flex:1; text-align:center;">
-                파일 업로드
-                <input type="file" id="my-file-upload" accept="image/*" multiple hidden />
-              </label>
-              <button type="button" class="btn btn-sm" id="my-file-new-folder">새 폴더</button>
-            </div>
-            <div class="my-folder-row" id="my-folder-row"></div>
-            <div class="my-file-grid" id="my-file-grid"></div>
-          </details>
-          <details class="rail-details" open>
-            <summary class="rail-details-summary">텍스트 · 워드아트</summary>
-            <p class="rail-hint rail-hint-tight">버튼을 누르면 캔버스 중앙에 스타일 텍스트가 추가됩니다.</p>
-            <div class="wordart-grid" id="wordart-grid"></div>
-          </details>
-          <details class="rail-details">
-            <summary class="rail-details-summary">프레임 · 사진 영역</summary>
-            <p class="rail-hint rail-hint-tight">프레임 위에 이미지를 올려 놓거나 이미지를 불러와 크기를 맞춥니다.</p>
-            <div class="frame-btns">
-              <button type="button" class="btn-tile" data-frame="simple">슬림 테두리</button>
-              <button type="button" class="btn-tile" data-frame="round">둥근 프레임</button>
-              <button type="button" class="btn-tile" data-frame="double">이중 테두리</button>
-              <button type="button" class="btn-tile" data-frame="polaroid">폴라로이드</button>
-              <button type="button" class="btn-tile" data-frame="square">정사각</button>
-              <button type="button" class="btn-tile" data-frame="portrait">세로형</button>
-              <button type="button" class="btn-tile" data-frame="landscape">가로형</button>
-              <button type="button" class="btn-tile" data-frame="capsule">캡슐형</button>
-              <button type="button" class="btn-tile" data-frame="soft">소프트 라운드</button>
-              <button type="button" class="btn-tile" data-frame="bold">볼드 테두리</button>
-              <button type="button" class="btn-tile" data-frame="vintage">빈티지</button>
-              <button type="button" class="btn-tile" data-frame="ticket">티켓 점선</button>
-              <button type="button" class="btn-tile" data-frame="matte-dark">다크 매트</button>
-              <button type="button" class="btn-tile" data-frame="gold">골드 매트</button>
-            </div>
-          </details>
-          <div class="rail-section rail-section-templates">
-            <h2 class="rail-title">템플릿</h2>
-            <p class="rail-hint">클릭하면 캔버스가 비워지고 레이아웃이 채워집니다.</p>
-            <div class="template-list" id="template-list"></div>
-          </div>
-          <div class="rail-section rail-section-layers">
-            <h2 class="rail-title">레이어</h2>
-            <ul class="layer-list" id="layer-list" aria-live="polite"></ul>
-          </div>
-        </div>
-      </aside>
-      <div class="editor-canvas-zone" id="viewport" tabindex="-1">
-        <div class="canvas-viewport-inner" id="viewport-inner">
-          <div class="canvas-card" id="canvas-card">
-            <canvas id="design-canvas" width="1080" height="1080"></canvas>
-          </div>
-        </div>
-        <aside class="slide-stack" aria-label="슬라이드 목록">
-          <h3 class="slide-stack-title">슬라이드</h3>
-          <div class="slide-list" id="slide-list"></div>
-        </aside>
-      </div>
-      <aside class="editor-inspector" aria-label="속성">
-        <h2 class="rail-title">속성</h2>
-        <div id="inspector-empty" class="inspector-empty">
-          <p>객체를 선택하면 글꼴·색·테두리를 바꿀 수 있어요.</p>
-        </div>
-        <div id="inspector-panel" class="inspector-panel" hidden>
-          <div class="inspector-actions">
-            <button type="button" class="btn btn-sm" id="ins-duplicate">복제</button>
-            <button type="button" class="btn btn-sm btn-danger" id="ins-delete">삭제</button>
-          </div>
-          <div class="inspector-row" id="ins-text-wrap" hidden>
-            <label class="ins-label">내용</label>
-            <textarea id="ins-text" class="input textarea-sm" rows="3"></textarea>
-          </div>
-          <div class="inspector-row" id="ins-font-wrap" hidden>
-            <label class="ins-label">글꼴</label>
-            <select id="ins-font" class="select"></select>
-            <input type="text" id="ins-font-search" class="input" placeholder="폰트 검색 (예: noto, 나눔)" style="margin-top:.4rem;" />
-            <div id="ins-font-preview" class="font-preview-list" aria-label="폰트 미리보기 목록"></div>
-          </div>
-          <div class="inspector-row" id="ins-size-wrap" hidden>
-            <label class="ins-label">크기 <span id="ins-size-val" class="val-pill"></span></label>
-            <input type="range" id="ins-font-size" min="8" max="200" value="48" />
-          </div>
-          <div class="inspector-row">
-            <label class="ins-label">채우기</label>
-            <input type="color" id="ins-fill" value="#1e293b" />
-          </div>
-          <div class="inspector-row" id="ins-stroke-wrap" hidden>
-            <label class="ins-label">테두리 색</label>
-            <input type="color" id="ins-stroke" value="#000000" />
-          </div>
-          <div class="inspector-row" id="ins-stroke-w-wrap" hidden>
-            <label class="ins-label">테두리 두께</label>
-            <input type="range" id="ins-stroke-width" min="0" max="40" value="2" />
-          </div>
-          <div class="inspector-row">
-            <label class="ins-label">불투명도</label>
-            <input type="range" id="ins-opacity" min="0" max="100" value="100" />
-          </div>
-          <div class="inspector-row" id="ins-size-box-wrap">
-            <label class="ins-label">크기 (너비 × 높이)</label>
-            <div class="ins-btn-grid ins-btn-grid-2">
-              <input type="number" id="ins-width" class="input" min="1" max="20000" step="1" />
-              <input type="number" id="ins-height" class="input" min="1" max="20000" step="1" />
-            </div>
-          </div>
-                    <div class="inspector-row" id="ins-arrange-wrap">
-            <label class="ins-label">캔버스 정렬</label>
-            <div class="ins-btn-grid ins-btn-grid-3">
-              <button type="button" class="btn btn-sm" data-arr="left" title="왼쪽 맞춤">왼쪽</button>
-              <button type="button" class="btn btn-sm" data-arr="hcenter" title="가로 가운데">가운데↔</button>
-              <button type="button" class="btn btn-sm" data-arr="right" title="오른쪽 맞춤">오른쪽</button>
-              <button type="button" class="btn btn-sm" data-arr="top" title="위 맞춤">위</button>
-              <button type="button" class="btn btn-sm" data-arr="vcenter" title="세로 가운데">가운데↕</button>
-              <button type="button" class="btn btn-sm" data-arr="bottom" title="아래 맞춤">아래</button>
-            </div>
-          </div>
-          <div class="inspector-row" id="ins-stack-wrap">
-            <label class="ins-label">앞뒤 순서</label>
-            <div class="ins-btn-grid ins-btn-grid-2">
-              <button type="button" class="btn btn-sm" data-stack="tofront" title="맨 앞으로">맨 앞</button>
-              <button type="button" class="btn btn-sm" data-stack="forward" title="한 칸 앞으로">한 칸 ↑</button>
-              <button type="button" class="btn btn-sm" data-stack="backward" title="한 칸 뒤로">한 칸 ↓</button>
-              <button type="button" class="btn btn-sm" data-stack="toback" title="맨 뒤로">맨 뒤</button>
-            </div>
-          </div>
-          <div class="inspector-row" id="ins-flip-wrap">
-            <label class="ins-label">뒤집기</label>
-            <div class="ins-btn-grid ins-btn-grid-2">
-              <button type="button" class="btn btn-sm" data-flip="x" title="좌우 뒤집기">좌우</button>
-              <button type="button" class="btn btn-sm" data-flip="y" title="상하 뒤집기">상하</button>
-            </div>
-          </div>
-        </div>
-      </aside>
-    </div>
-  </div>
-  <section class="download-modal" id="download-modal" hidden aria-label="다운로드 설정">
-    <div class="download-backdrop" id="download-close"></div>
-    <div class="download-panel">
-      <header class="download-head">
-        <h2>다운로드 설정</h2>
-        <button type="button" class="btn-icon" id="download-x" title="닫기">✕</button>
-      </header>
-      <div class="download-body">
-        <label class="ins-label">형식</label>
-        <select id="download-format" class="select">
-          <option value="png">PNG</option>
-          <option value="jpg">JPG</option>
-          <option value="pdf">PDF 이미지</option>
-          <option value="gif">GIF</option>
-          <option value="mp4">MP4 동영상</option>
-          <option value="loop">반복해서 움직이는 이미지</option>
-        </select>
-        <label class="ins-label" style="margin-top:.7rem;">범위</label>
-        <select id="download-range" class="select">
-          <option value="all">전체 슬라이드</option>
-          <option value="current">현재 슬라이드</option>
-          <option value="custom">직접 지정</option>
-        </select>
-        <input type="text" id="download-custom" class="input" placeholder="예: 2-3,5" style="margin-top:.45rem;" hidden />
-        <p class="rail-hint" style="margin-top:.5rem;">GIF/동영상은 슬라이드 순서대로 1.2초 간격으로 만들어집니다.</p>
-      </div>
-      <footer class="download-foot">
-        <button type="button" class="btn" id="download-cancel">취소</button>
-        <button type="button" class="btn btn-primary" id="download-run">다운로드</button>
-      </footer>
-    </div>
-  </section>
-  <section class="work-browser" id="work-browser" hidden aria-label="나의 작업 모아보기">
-    <div class="work-browser-backdrop" id="work-browser-close"></div>
-    <div class="work-browser-panel">
-      <header class="work-browser-head">
-        <h2 class="work-browser-title">내 템플릿 <span class="count-pill" id="work-count-pill">0</span></h2>
-        <button type="button" class="btn-icon" id="work-browser-x" title="닫기">✕</button>
-      </header>
-      <div class="work-folder-row" id="work-folder-row"></div>
-      <div class="work-grid" id="work-grid"></div>
-    </div>
-  </section>
-  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<a class="skip-link" href="#viewport">캔버스 영역으로</a>
+<div class="editor-app" id="editor-app">
+<header class="editor-topbar">
+<div class="topbar-left">
+<div class="logo">
+<span class="logo-icon" aria-hidden="true">▣</span>
+<div>
+<strong>준스보드</strong>
+<span class="logo-tag">디자인 보드</span>
+</div>
+</div>
+<label class="field-inline">
+<span class="sr-only">캔버스 크기</span>
+<select id="preset-size" class="select compact" title="캔버스 크기"></select>
+</label>
+<div class="slide-size-inline" title="슬라이드 크기">
+<input type="number" id="slide-width" class="input number-xs" min="64" max="8000" step="1" />
+<span>×</span>
+<input type="number" id="slide-height" class="input number-xs" min="64" max="8000" step="1" />
+<button type="button" class="btn btn-sm" id="btn-apply-slide-size">크기 적용</button>
+</div>
+<div class="slide-actions">
+<span class="slide-label" id="slide-label">슬라이드 1 / 1</span>
+<button type="button" class="btn btn-sm" id="btn-slide-move-prev" title="슬라이드를 이전 순서로 이동">순서 ↑</button>
+<button type="button" class="btn btn-sm" id="btn-slide-move-next" title="슬라이드를 다음 순서로 이동">순서 ↓</button>
+<button type="button" class="btn btn-sm" id="btn-slide-dup" title="슬라이드 복사">복사</button>
+<button type="button" class="btn btn-sm" id="btn-slide-add" title="슬라이드 추가">추가</button>
+<button type="button" class="btn btn-sm btn-danger" id="btn-slide-del" title="슬라이드 지우기">지우기</button>
+</div>
+<label class="field-inline color-field">
+<span>배경</span>
+<input type="color" id="canvas-bg" value="#ffffff" title="캔버스 배경색" />
+</label>
+</div>
+<div class="topbar-center">
+<div class="zoom-control">
+<button type="button" class="btn-icon" id="zoom-out" title="축소">−</button>
+<span id="zoom-label" class="zoom-label">100%</span>
+<button type="button" class="btn-icon" id="zoom-in" title="확대">+</button>
+<button type="button" class="btn-text" id="zoom-fit" title="화면에 맞춤">맞춤</button>
+</div>
+</div>
+<div class="topbar-right">
+<button type="button" class="btn btn-ghost" id="btn-undo" title="실행 취소 (Ctrl+Z)">↶ 실행 취소</button>
+<button type="button" class="btn btn-ghost" id="btn-redo" title="다시 실행 (Ctrl+Y)">↷ 다시 실행</button>
+<button type="button" class="btn btn-ghost" id="btn-theme" title="테마"><span class="icon-theme" aria-hidden="true"></span></button>
+<button type="button" class="btn btn-primary" id="btn-export-png">다운로드</button>
+</div>
+</header>
+<div class="editor-body-row">
+<aside class="editor-rail" id="editor-rail" aria-label="도구 및 템플릿, 나의 작업">
+<div class="rail-inner">
+<div class="rail-scroll">
+<div class="rail-section rail-section-work">
+<h2 class="rail-title work-title-click" id="work-title-click">나의 작업</h2>
+<p class="rail-hint">이 브라우저에 저장됩니다. 이름을 정하고 저장하세요.</p>
+<input type="text" id="project-name" class="input input-compact" placeholder="작업 이름" maxlength="80" autocomplete="off" />
+<select id="project-folder" class="select input-compact" title="저장 폴더"></select>
+<div class="work-actions">
+<button type="button" class="btn btn-sm" id="btn-new-project" title="새 캔버스">새 프로젝트</button>
+<button type="button" class="btn btn-sm btn-primary" id="btn-save-project">저장</button>
+</div>
+<button type="button" class="btn btn-sm work-browser-open" id="btn-open-work-browser">내 작업 보기</button>
+<ul class="work-list" id="work-list" aria-label="저장된 작업 목록"></ul>
+<details class="cloud-box">
+<summary class="cloud-title">클라우드 저장 (Supabase)</summary>
+<p class="rail-hint">로그인하면 PC가 바뀌어도 작업을 불러올 수 있습니다.</p>
+<input type="text" id="cloud-url" class="input input-compact" placeholder="Supabase URL" autocomplete="off" value="https://laxhdswhxogdkjbrcaqc.supabase.co" />
+<input type="text" id="cloud-anon" class="input input-compact" placeholder="Supabase Anon Key" autocomplete="off" value="sb_publishable_HOsV8EqyvXF6P4oThx4ldw_tqDCDr6P" />
+<button type="button" class="btn btn-sm" id="cloud-connect">클라우드 연결</button>
+<div class="cloud-auth-row">
+<input type="email" id="cloud-email" class="input" placeholder="이메일" autocomplete="email" />
+<input type="password" id="cloud-password" class="input" placeholder="비밀번호" autocomplete="current-password" />
+</div>
+<div class="cloud-actions">
+<button type="button" class="btn btn-sm" id="cloud-signup">회원가입</button>
+<button type="button" class="btn btn-sm" id="cloud-login">로그인</button>
+<button type="button" class="btn btn-sm" id="cloud-logout">로그아웃</button>
+</div>
+<div class="cloud-actions">
+<button type="button" class="btn btn-sm btn-primary" id="cloud-save-now">클라우드 저장</button>
+<button type="button" class="btn btn-sm" id="cloud-pull">클라우드 불러오기</button>
+</div>
+<p class="cloud-status" id="cloud-status">클라우드 미연결</p>
+</details>
+</div>
+<div class="rail-section">
+<h2 class="rail-title">기본 도구</h2>
+<div class="tool-grid tool-grid-basic" id="tool-grid-basic">
+<button type="button" class="tool-btn active" data-tool="select" title="선택 (V)"><span class="tool-ic">↖</span><span>선택</span></button>
+<button type="button" class="tool-btn" data-tool="text" title="텍스트 (T)"><span class="tool-ic">T</span><span>텍스트</span></button>
+<label class="tool-btn tool-file" title="이미지 업로드">
+<input type="file" id="img-upload" accept="image/*" hidden />
+<span class="tool-ic">🖼</span><span>이미지</span>
+</label>
+</div>
+</div>
+          <div class="rail-section rail-section-launchers">
+            <h2 class="rail-title">에셏 패널</h2>
+<p class="rail-hint rail-hint-tight">아래를 누르면 오른쪽으로 패널이 열립니다. 같은 버튼을 다시 누르면 닫힙니다.</p>
+<div class="rail-launcher-grid" role="tablist" aria-label="콘텐츠 열기">
+<button type="button" class="rail-launch-btn" role="tab" data-rail-panel="rail-pane-shapes" aria-selected="false">도형 · 선</button>
+<button type="button" class="rail-launch-btn" role="tab" data-rail-panel="rail-pane-icons" aria-selected="false">아이콘</button>
+<button type="button" class="rail-launch-btn" role="tab" data-rail-panel="rail-pane-upload" aria-selected="false">업로드</button>
+<button type="button" class="rail-launch-btn" role="tab" data-rail-panel="rail-pane-wordart" aria-selected="false">워드아트</button>
+<button type="button" class="rail-launch-btn" role="tab" data-rail-panel="rail-pane-frames" aria-selected="false">프레임</button>
+<button type="button" class="rail-launch-btn" role="tab" data-rail-panel="rail-pane-templates" aria-selected="false">템플릿</button>
+</div>
+</div>
+<div class="rail-section rail-section-layers">
+<h2 class="rail-title">레이어</h2>
+<ul class="layer-list" id="layer-list" aria-live="polite"></ul>
+</div>
+</div>
+</div>
+<div class="rail-slide-panel" id="rail-slide-panel" aria-hidden="true">
+<div class="rail-slide-header">
+<h2 class="rail-slide-title" id="rail-slide-title"></h2>
+<button type="button" class="rail-slide-close" id="rail-slide-close" aria-label="패널 닫기">×</button>
+</div>
+<div class="rail-slide-body">
+<div class="rail-slide-pane" id="rail-pane-shapes" role="tabpanel" hidden>
+<p class="rail-hint rail-hint-tight">도구를 고른 후 캔버스를 클릭합니다.</p>
+<div class="tool-grid" id="tool-grid-shapes">
+<button type="button" class="tool-btn" data-tool="rect" title="사각형"><span class="tool-ic">▭</span><span>사각형</span></button>
+<button type="button" class="tool-btn" data-tool="circle" title="원"><span class="tool-ic">○</span><span>원</span></button>
+<button type="button" class="tool-btn" data-tool="ellipse" title="타원"><span class="tool-ic">⬭</span><span>타원</span></button>
+<button type="button" class="tool-btn" data-tool="triangle" title="삼각형"><span class="tool-ic">△</span><span>삼각형</span></button>
+<button type="button" class="tool-btn" data-tool="diamond" title="다이아몰드"><span class="tool-ic">◇</span><span>다이아몰드</span></button>
+<button type="button" class="tool-btn" data-tool="star" title="별"><span class="tool-ic">★</span><span>별</span></button>
+<button type="button" class="tool-btn" data-tool="line" title="직선"><span class="tool-ic">╱</span><span>직선</span></button>
+<button type="button" class="tool-btn" data-tool="line-dash" title="점선"><span class="tool-ic">⋯</span><span>점선</span></button>
+<button type="button" class="tool-btn" data-tool="arrow" title="화살표"><span class="tool-ic">➤</span><span>화살표</span></button>
+</div>
+</div>
+<div class="rail-slide-pane" id="rail-pane-icons" role="tabpanel" hidden>
+<p class="rail-hint rail-hint-tight">예: 직선·숫자, 화살표, 계산, QR, 자동차, 음식</p>
+<div class="icon-search-row">
+<input type="text" id="icon-query" class="input input-compact" placeholder="검색: 선, 숫자, 하트, 시계…" />
+<button type="button" class="btn btn-sm" id="icon-search-btn">검색</button>
+</div>
+<div class="icon-grid" id="icon-grid"></div>
+</div>
+<div class="rail-slide-pane" id="rail-pane-upload" role="tabpanel" hidden>
+<p class="rail-hint rail-hint-tight">이미지 업로드 후 폴더로 정리하고 클릭해 삽입하세요.</p>
+<div class="icon-search-row">
+<label class="btn btn-sm" style="flex:1; text-align:center;">
+
+                  파일 업로드
+
+                  <input type="file" id="my-file-upload" accept="image/*" multiple hidden />
+</label>
+<button type="button" class="btn btn-sm" id="my-file-new-folder">새 폴더</button>
+</div>
+<div class="my-folder-row" id="my-folder-row"></div>
+<div class="my-file-grid" id="my-file-grid"></div>
+</div>
+<div class="rail-slide-pane" id="rail-pane-wordart" role="tabpanel" hidden>
+<p class="rail-hint rail-hint-tight">버튼을 누르면 캔버스 중앙에 스타일 텍스트가 추가됩니다.</p>
+<div class="wordart-grid" id="wordart-grid"></div>
+</div>
+<div class="rail-slide-pane" id="rail-pane-frames" role="tabpanel" hidden>
+<p class="rail-hint rail-hint-tight">프레임 위에 이미지를 올려 놓거나 이미지를 불러와 크기를 맞춥니다.</p>
+<div class="frame-btns">
+<button type="button" class="btn-tile frame-tile" data-frame="simple"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">슬림 테두리</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="round"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">둥근 프레임</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="double"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">이중 테두리</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="polaroid"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">폴라로이드</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="square"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">정사각</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="portrait"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">세로형</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="landscape"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">가로형</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="capsule"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">캡슐형</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="soft"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">소프트 라운드</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="bold"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">볼드 테두리</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="vintage"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">빈티지</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="ticket"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">티켓 점선</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="matte-dark"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">다크 매트</span></button>
+<button type="button" class="btn-tile frame-tile" data-frame="gold"><span class="frame-thumb" aria-hidden="true"></span><span class="frame-tile__label">골드 매트</span></button>
+</div>
+</div>
+<div class="rail-slide-pane rail-slide-pane-templates" id="rail-pane-templates" role="tabpanel" hidden>
+<p class="rail-hint rail-hint-tight">클릭하면 캔버스가 비워지고 레이아웃이 채워집니다.</p>
+<div class="template-list" id="template-list"></div>
+</div>
+</div>
+</div>
+</aside>
+<div class="editor-canvas-zone" id="viewport" tabindex="-1">
+<div class="canvas-viewport-inner" id="viewport-inner">
+<div class="canvas-card" id="canvas-card">
+<canvas id="design-canvas" width="1080" height="1080"></canvas>
+</div>
+</div>
+<aside class="slide-stack" aria-label="슬라이드 목록">
+<h3 class="slide-stack-title">슬라이드</h3>
+<div class="slide-list" id="slide-list"></div>
+</aside>
+</div>
+<aside class="editor-inspector" aria-label="속성">
+<h2 class="rail-title">속성</h2>
+<div id="inspector-empty" class="inspector-empty">
+<p>객체를 선택하면 글꼴·색·테두리를 바꿀 수 있어요.</p>
+</div>
+<div id="inspector-panel" class="inspector-panel" hidden>
+<div class="inspector-actions">
+<button type="button" class="btn btn-sm" id="ins-duplicate">복제</button>
+<button type="button" class="btn btn-sm btn-danger" id="ins-delete">삭제</button>
+</div>
+<div class="inspector-row" id="ins-text-wrap" hidden>
+<label class="ins-label">내용</label>
+<textarea id="ins-text" class="input textarea-sm" rows="3"></textarea>
+</div>
+<div class="inspector-row" id="ins-font-wrap" hidden>
+<label class="ins-label">글꼴</label>
+<select id="ins-font" class="select"></select>
+<input type="text" id="ins-font-search" class="input" placeholder="폰트 검색 (예: noto, 나눔)" style="margin-top:.4rem;" />
+<div id="ins-font-preview" class="font-preview-list" aria-label="폰트 미리보기 목록"></div>
+</div>
+<div class="inspector-row" id="ins-size-wrap" hidden>
+<label class="ins-label">크기 <span id="ins-size-val" class="val-pill"></span></label>
+<input type="range" id="ins-font-size" min="8" max="200" value="48" />
+</div>
+<div class="inspector-row">
+<label class="ins-label">채우기</label>
+<input type="color" id="ins-fill" value="#1e293b" />
+</div>
+<div class="inspector-row" id="ins-stroke-wrap" hidden>
+<label class="ins-label">테두리 색</label>
+<input type="color" id="ins-stroke" value="#000000" />
+</div>
+<div class="inspector-row" id="ins-stroke-w-wrap" hidden>
+<label class="ins-label">테두리 두께</label>
+<input type="range" id="ins-stroke-width" min="0" max="40" value="2" />
+</div>
+<div class="inspector-row">
+<label class="ins-label">불투명도</label>
+<input type="range" id="ins-opacity" min="0" max="100" value="100" />
+</div>
+<div class="inspector-row" id="ins-size-box-wrap">
+<label class="ins-label">크기 (너비 × 높이)</label>
+<div class="ins-btn-grid ins-btn-grid-2">
+<input type="number" id="ins-width" class="input" min="1" max="20000" step="1" />
+<input type="number" id="ins-height" class="input" min="1" max="20000" step="1" />
+</div>
+</div>
+<div class="inspector-row" id="ins-arrange-wrap">
+<label class="ins-label">캔버스 정렬</label>
+<div class="ins-btn-grid ins-btn-grid-3">
+<button type="button" class="btn btn-sm" data-arr="left" title="왼쪽 맞춤">왼쪽</button>
+<button type="button" class="btn btn-sm" data-arr="hcenter" title="가로 가운데">가운데↔</button>
+<button type="button" class="btn btn-sm" data-arr="right" title="오른쪽 맞춤">오른쪽</button>
+<button type="button" class="btn btn-sm" data-arr="top" title="위 맞춤">위</button>
+<button type="button" class="btn btn-sm" data-arr="vcenter" title="세로 가운데">가운데↕</button>
+<button type="button" class="btn btn-sm" data-arr="bottom" title="아래 맞춤">아래</button>
+</div>
+</div>
+<div class="inspector-row" id="ins-stack-wrap">
+<label class="ins-label">앞뒤 순서</label>
+<div class="ins-btn-grid ins-btn-grid-2">
+<button type="button" class="btn btn-sm" data-stack="tofront" title="맨 앞으로">맨 앞</button>
+<button type="button" class="btn btn-sm" data-stack="forward" title="한 칸 앞으로">한 칸 ↑</button>
+<button type="button" class="btn btn-sm" data-stack="backward" title="한 칸 뒤로">한 칸 ↓</button>
+<button type="button" class="btn btn-sm" data-stack="toback" title="맨 뒤로">맨 뒤</button>
+</div>
+</div>
+<div class="inspector-row" id="ins-flip-wrap">
+<label class="ins-label">뒤집기</label>
+<div class="ins-btn-grid ins-btn-grid-2">
+<button type="button" class="btn btn-sm" data-flip="x" title="좌우 뒤집기">좌우</button>
+<button type="button" class="btn btn-sm" data-flip="y" title="상하 뒤집기">상하</button>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<section class="download-modal" id="download-modal" hidden aria-label="다운로드 설정">
+<div class="download-backdrop" id="download-close"></div>
+<div class="download-panel">
+<header class="download-head">
+<h2>다운로드 설정</h2>
+<button type="button" class="btn-icon" id="download-x" title="닫기">✕</button>
+</header>
+<div class="download-body">
+<label class="ins-label">형식</label>
+<select id="download-format" class="select">
+<option value="png">PNG</option>
+<option value="jpg">JPG</option>
+<option value="pdf">PDF 이미지</option>
+<option value="gif">GIF</option>
+<option value="mp4">MP4 동영상</option>
+<option value="loop">반복해서 움직이는 이미지</option>
+</select>
+<label class="ins-label" style="margin-top:.7rem;">범위</label>
+<select id="download-range" class="select">
+<option value="all">전체 슬라이드</option>
+<option value="current">현재 슬라이드</option>
+<option value="custom">직접 지정</option>
+</select>
+<input type="text" id="download-custom" class="input" placeholder="예: 2-3,5" style="margin-top:.45rem;" hidden />
+<p class="rail-hint" style="margin-top:.5rem;">GIF/동영상은 슬라이드 순서대로 1.2초 간격으로 만들어집니다.</p>
+</div>
+<footer class="download-foot">
+<button type="button" class="btn" id="download-cancel">취소</button>
+<button type="button" class="btn btn-primary" id="download-run">다운로드</button>
+</footer>
+</div>
+</section>
+<section class="work-browser" id="work-browser" hidden aria-label="나의 작업 모아보기">
+<div class="work-browser-backdrop" id="work-browser-close"></div>
+<div class="work-browser-panel">
+<header class="work-browser-head">
+<h2 class="work-browser-title">내 템플릿 <span class="count-pill" id="work-count-pill">0</span></h2>
+<button type="button" class="btn-icon" id="work-browser-x" title="닫기">✕</button>
+</header>
+<div class="work-folder-row" id="work-folder-row"></div>
+<div class="work-grid" id="work-grid"></div>
+</div>
+</section>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>
+
