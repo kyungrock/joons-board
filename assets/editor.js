@@ -407,6 +407,7 @@
   let currentSlideIndex = 0;
   let slideFabrics = [];
   let domListenersAttached = false;
+  let closeRailSlidePanel = null;
   const thumbGenerating = new Set();
   let slideThumbTimer = null;
   let restoring = false;
@@ -794,6 +795,8 @@
       titleEl.textContent = "";
       setLaunchersActive(null);
     }
+
+    closeRailSlidePanel = closeRailPanel;
 
     launchers.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1407,6 +1410,7 @@
       updateInspector();
     });
     fc.on("mouse:down", (opt) => {
+      if (typeof closeRailSlidePanel === "function") closeRailSlidePanel();
       if (fc !== canvas) {
         loadSlideAt(slideIdx);
         return;
