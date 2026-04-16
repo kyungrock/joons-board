@@ -658,11 +658,13 @@
       del.addEventListener("click", (e) => {
         e.stopPropagation();
         if (!confirm("\ub0b4 \ud30c\uc77c\uc5d0\uc11c \uc774 \uc774\ubbf8\uc9c0\ub97c \uc0ad\uc81c\ud560\uae4c\uc694?")) return;
-        const next = getMyFiles().filter((x) => x.id !== f.id);
+        const removedId = f.id;
+        const next = getMyFiles().filter((x) => x.id !== removedId);
         setMyFiles(next);
         renderMyFileFolders();
         renderMyFiles();
         toast("\uc0ad\uc81c\ud588\uc2b5\ub2c8\ub2e4");
+        void cloudDeleteAssetByAssetId(removedId);
       });
 
       wrap.appendChild(main);
@@ -1021,6 +1023,32 @@
       return;
     }
     if (!silent) toast("클라우드에 저장했습니다");
+  }
+
+  /** 목록에서 삭제한 작업이 '클라우드 불러오기'로 다시 나오지 않도록 DB 행도 제거합니다. */
+  async function cloudDeleteProjectByProjectId(projectId) {
+    if (!projectId || !cloudClient) return;
+    await refreshCloudSession();
+    if (!cloudUser) return;
+    const { error } = await cloudClient
+      .from("joons_projects")
+      .delete()
+      .eq("user_id", cloudUser.id)
+      .eq("project_id", String(projectId));
+    if (error) toast("클라우드 작업 삭제 실패: " + error.message);
+  }
+
+  /** 내 파일 삭제 시 클라우드에 남아 있으면 불러오기 때 복구되므로 DB에서도 삭제합니다. */
+  async function cloudDeleteAssetByAssetId(assetId) {
+    if (!assetId || !cloudClient) return;
+    await refreshCloudSession();
+    if (!cloudUser) return;
+    const { error } = await cloudClient
+      .from("joons_assets")
+      .delete()
+      .eq("user_id", cloudUser.id)
+      .eq("asset_id", String(assetId));
+    if (error) toast("클라우드 파일 삭제 실패: " + error.message);
   }
 
   async function cloudSaveMyFiles(silent) {
@@ -2199,6 +2227,7 @@
     renderWorkList();
     renderWorkBrowser();
     toast("삭제했습니다");
+    void cloudDeleteProjectByProjectId(id);
   }
 
   function newProject() {
