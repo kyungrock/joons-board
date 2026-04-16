@@ -536,8 +536,26 @@
     }
   }
 
+  function isLocalQuotaError(err) {
+    if (!err) return false;
+    const name = String(err.name || "");
+    const msg = String(err.message || "").toLowerCase();
+    return (
+      name === "QuotaExceededError" ||
+      name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+      msg.includes("quota") ||
+      msg.includes("storage")
+    );
+  }
+
   function setWorks(arr) {
-    localStorage.setItem(WORK_KEY, JSON.stringify(arr));
+    try {
+      localStorage.setItem(WORK_KEY, JSON.stringify(arr));
+      return { ok: true, error: null };
+    } catch (err) {
+      console.error("Failed to save works to localStorage:", err);
+      return { ok: false, error: err };
+    }
   }
 
   function getMyFileFolders() {
@@ -887,12 +905,21 @@
     const idx = list.findIndex((x) => x.id === payload.id);
     if (idx >= 0) list[idx] = payload;
     else list.push(payload);
-    setWorks(list);
+    const saveResult = setWorks(list);
+    if (!saveResult.ok) {
+      toast(
+        isLocalQuotaError(saveResult.error)
+          ? "로컬 저장 공간이 부족해 저장하지 못했습니다. 작업 수/이미지 용량을 줄이거나 클라우드 저장을 이용해주세요."
+          : "로컬 저장에 실패했습니다. 브라우저 설정(저장소) 확인 후 다시 시도해주세요."
+      );
+      return false;
+    }
     currentWorkId = payload.id;
     document.getElementById("project-name").value = payload.name || "";
     renderFolderSelect();
     renderWorkList();
     renderWorkBrowser();
+    return true;
   }
 
   function initCloudClient() {
@@ -1737,9 +1764,9 @@
     queueCurrentSlideThumbRefresh();
   }
 
-  function loadSlideAt(index) {
+  function loadSlideAt(index, opts = {}) {
     if (index < 0 || index >= slides.length) return;
-    syncCurrentSlideState();
+    if (!opts.skipCurrentSync) syncCurrentSlideState();
 
     function applyLoadedSlide() {
       const s = slides[index];
@@ -1809,9 +1836,17 @@
       toast("슬라이드는 최소 1개 필요합니다");
       return;
     }
-    slides.splice(currentSlideIndex, 1);
+    // UI 인덱스와 실제 활성 fabric 인덱스가 어긋나는 경우를 방지합니다.
+    const activeFabricIndex = slideFabrics.indexOf(canvas);
+    const deleteIndex =
+      activeFabricIndex >= 0 && activeFabricIndex < slides.length
+        ? activeFabricIndex
+        : Math.max(0, Math.min(slides.length - 1, currentSlideIndex));
+    currentSlideIndex = deleteIndex;
+    syncCurrentSlideState();
+    slides.splice(deleteIndex, 1);
     if (currentSlideIndex >= slides.length) currentSlideIndex = slides.length - 1;
-    loadSlideAt(currentSlideIndex);
+    loadSlideAt(currentSlideIndex, { skipCurrentSync: true });
     queueCurrentSlideThumbRefresh();
     toast("슬라이드를 지웠습니다");
   }
@@ -2168,7 +2203,8 @@
     syncCurrentSlideState();
     const payload = getPayloadFromCurrentState();
     currentFolderId = payload.folderId || currentFolderId;
-    mergeLocalWork(payload);
+    const saved = mergeLocalWork(payload);
+    if (!saved) return;
     cloudSavePayload(payload, true);
     toast("나의 작업에 저장했습니다");
   }
@@ -2214,7 +2250,7 @@
       0,
       Math.min(normalizedSlides.length - 1, Number.isInteger(w.currentSlideIndex) ? w.currentSlideIndex : 0)
     );
-    loadSlideAt(currentSlideIndex);
+    loadSlideAt(currentSlideIndex, { skipCurrentSync: true });
     renderWorkList();
     toast("작업을 불러왔습니다");
   }
@@ -2240,20 +2276,31 @@
       return;
     currentWorkId = null;
     document.getElementById("project-name").value = "";
-    const bg = document.getElementById("canvas-bg").value || "#ffffff";
+    const basePreset = PRESETS.find((p) => p.id === "ig") || PRESETS[0] || { id: "ig", w: 1080, h: 1080 };
+    const baseW = Math.max(1, Math.round(basePreset.w || 1080));
+    const baseH = Math.max(1, Math.round(basePreset.h || 1080));
+    const bg = "#ffffff";
+    logicalW = baseW;
+    logicalH = baseH;
+    lastPresetId = basePreset.id || "ig";
+    const presetSel = document.getElementById("preset-size");
+    if (presetSel) presetSel.value = lastPresetId;
+    const bgInput = document.getElementById("canvas-bg");
+    if (bgInput) bgInput.value = bg;
     slides = [
       {
         id: newSlideId(),
-        canvasW: logicalW,
-        canvasH: logicalH,
+        canvasW: baseW,
+        canvasH: baseH,
         bg: bg,
-        presetId: lastPresetId,
+        presetId: basePreset.id || "ig",
         json: JSON.stringify({ objects: [], background: bg }),
         thumb: "",
       },
     ];
     currentSlideIndex = 0;
-    loadSlideAt(0);
+    disposeSlideFabrics();
+    loadSlideAt(0, { skipCurrentSync: true });
     toast("새 프로젝트");
   }
 
