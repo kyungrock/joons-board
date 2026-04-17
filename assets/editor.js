@@ -1241,6 +1241,27 @@
     await cloudPullMyFiles(true);
   }
 
+  async function cloudFetchProjectPayload(projectId) {
+    if (!projectId || !cloudClient || !cloudUser) return null;
+    const { data, error } = await cloudClient
+      .from("joons_projects")
+      .select("payload_json")
+      .eq("user_id", cloudUser.id)
+      .eq("project_id", String(projectId))
+      .limit(1);
+    if (error || !data || !data.length) return null;
+    let p = data[0] && data[0].payload_json ? data[0].payload_json : null;
+    if (typeof p === "string") {
+      try {
+        p = JSON.parse(p);
+      } catch {
+        p = null;
+      }
+    }
+    if (!p || typeof p !== "object" || !p.id) return null;
+    return p;
+  }
+
   function getFolders() {
     try {
       const raw = localStorage.getItem(WORK_FOLDER_KEY);
@@ -2235,14 +2256,18 @@
     toast("나의 작업에 저장했습니다");
   }
 
-  function loadWorkEntry(id) {
-    const w = getWorks().find((x) => x.id === id);
+  async function loadWorkEntry(id) {
+    let w = getWorks().find((x) => x.id === id);
     if (!w) return;
     if (
       hasAnySlideContent() &&
       !confirm("저장되지 않은 변경이 사라질 수 있습니다. 이 작업을 불러올까요?")
     )
       return;
+    if (cloudClient && cloudUser) {
+      const cloudPayload = await cloudFetchProjectPayload(w.id);
+      if (cloudPayload) w = cloudPayload;
+    }
     currentWorkId = w.id;
     currentFolderId = w.folderId || DEFAULT_FOLDER_ID;
     document.getElementById("project-name").value = w.name || "";
