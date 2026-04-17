@@ -403,6 +403,7 @@
   let myFileFolderId = DEFAULT_FOLDER_ID;
   let cloudClient = null;
   let cloudUser = null;
+  let cloudWorksCache = [];
   let slides = [];
   let currentSlideIndex = 0;
   let slideFabrics = [];
@@ -527,6 +528,9 @@
   }
 
   function getWorks() {
+    if (cloudClient && cloudUser) {
+      return Array.isArray(cloudWorksCache) ? cloudWorksCache.slice() : [];
+    }
     try {
       const raw = localStorage.getItem(WORK_KEY);
       const a = raw ? JSON.parse(raw) : [];
@@ -549,6 +553,10 @@
   }
 
   function setWorks(arr) {
+    if (cloudClient && cloudUser) {
+      cloudWorksCache = Array.isArray(arr) ? arr.slice() : [];
+      return { ok: true, error: null };
+    }
     try {
       localStorage.setItem(WORK_KEY, JSON.stringify(arr));
       return { ok: true, error: null };
@@ -934,6 +942,7 @@
     try {
       const { data } = await cloudClient.auth.getSession();
       cloudUser = data && data.session ? data.session.user : null;
+      if (!cloudUser) cloudWorksCache = [];
       setCloudStatus(cloudUser ? `로그인됨: ${cloudUser.email || cloudUser.id}` : "클라우드 연결됨 (로그인 필요)");
     } catch {
       setCloudStatus("클라우드 세션 확인 실패");
@@ -954,6 +963,7 @@
       return;
     }
     await refreshCloudSession();
+    if (cloudUser) await cloudPullAll();
     toast("클라우드 연결 설정을 저장했습니다");
   }
 
@@ -1003,6 +1013,7 @@
       return;
     }
     await refreshCloudSession();
+    await cloudPullAll();
     toast("로그인했습니다");
   }
 
@@ -1010,7 +1021,10 @@
     if (!cloudClient) return;
     await cloudClient.auth.signOut();
     cloudUser = null;
+    cloudWorksCache = [];
     setCloudStatus("클라우드 연결됨 (로그인 필요)");
+    renderWorkList();
+    renderWorkBrowser();
     toast("로그아웃했습니다");
   }
 
@@ -1209,7 +1223,14 @@
     const list = getWorks();
     const byId = new Map(list.map((x) => [x.id, x]));
     (data || []).forEach((row) => {
-      const p = row && row.payload_json ? row.payload_json : null;
+      let p = row && row.payload_json ? row.payload_json : null;
+      if (typeof p === "string") {
+        try {
+          p = JSON.parse(p);
+        } catch {
+          p = null;
+        }
+      }
       if (!p || !p.id) return;
       byId.set(p.id, p);
     });
@@ -1351,12 +1372,15 @@
   }
 
   function applyAlignmentGuideAndSnap(targetCanvas, target) {
-    if (!targetCanvas || !target || target.type === "activeSelection") {
+    if (!targetCanvas || !target) {
       clearAlignmentGuides(targetCanvas);
       return;
     }
     const b = getObjectBounds(target);
     if (!b) return;
+    const selectedObjects =
+      typeof target.getObjects === "function" ? target.getObjects() : [];
+    const selectedSet = new Set(selectedObjects);
     const xLines = [b.left, b.cx, b.right];
     const yLines = [b.top, b.cy, b.bottom];
     let bestDx = ALIGN_SNAP_TOLERANCE + 1;
@@ -1394,6 +1418,7 @@
     considerY(targetCanvas.getHeight() / 2);
     targetCanvas.getObjects().forEach((obj) => {
       if (!obj || obj === target || !obj.visible) return;
+      if (selectedSet.has(obj)) return;
       const ob = getObjectBounds(obj);
       if (!ob) return;
       considerX(ob.left);
@@ -1573,7 +1598,7 @@
       });
       fc.setWidth(cw);
       fc.setHeight(ch);
-      fc.loadFromJSON(JSON.parse(s.json || "{}"), () => {
+      fc.loadFromJSON(parseCanvasJsonSafe(s ? s.json : null), () => {
         fc.renderAll();
         slideFabrics[idx] = fc;
         doneOne();
@@ -1608,7 +1633,8 @@
     }
     return slides.some((s) => {
       try {
-        const o = JSON.parse(s.json || "{}").objects;
+        const parsed = parseCanvasJsonSafe(s ? s.json : null);
+        const o = parsed && parsed.objects;
         return Array.isArray(o) && o.length > 0;
       } catch {
         return false;
@@ -1677,7 +1703,7 @@
         enableRetinaScaling: false,
         backgroundColor: slide.bg || "#ffffff",
       });
-      sc.loadFromJSON(JSON.parse(slide.json || "{}"), () => {
+      sc.loadFromJSON(parseCanvasJsonSafe(slide ? slide.json : null), () => {
         try {
           sc.renderAll();
           const url = sc.toDataURL({
@@ -2169,7 +2195,7 @@
         enableRetinaScaling: false,
       });
       sc.backgroundColor = work.bg || "#ffffff";
-      sc.loadFromJSON(JSON.parse(work.json || "{}"), () => {
+      sc.loadFromJSON(parseCanvasJsonSafe(work ? work.json : null), () => {
         try {
           sc.renderAll();
           const thumb = sc.toDataURL({
@@ -2227,21 +2253,26 @@
       Array.isArray(w.slides) && w.slides.length
         ? w.slides.map((s, idx) => ({
             id: s.id || "s-" + idx + "-" + Date.now(),
-            canvasW: s.canvasW || w.canvasW || 1080,
-            canvasH: s.canvasH || w.canvasH || 1080,
-            bg: s.bg || w.bg || "#ffffff",
-            presetId: s.presetId || w.presetId || matchPresetIdForSize(s.canvasW || w.canvasW || 1080, s.canvasH || w.canvasH || 1080),
-            json: s.json || w.json || "{}",
+            canvasW: s.canvasW || s.width || s.w || w.canvasW || w.width || 1080,
+            canvasH: s.canvasH || s.height || s.h || w.canvasH || w.height || 1080,
+            bg: s.bg || s.background || w.bg || "#ffffff",
+            presetId: s.presetId || w.presetId || matchPresetIdForSize(
+              s.canvasW || s.width || s.w || w.canvasW || w.width || 1080,
+              s.canvasH || s.height || s.h || w.canvasH || w.height || 1080
+            ),
+            json: JSON.stringify(parseCanvasJsonSafe(
+              s.json || s.canvasJson || s.canvas_json || s.payload_json || s.payload || s.data || w.json || "{}"
+            )),
             thumb: s.thumb || "",
           }))
         : [
             {
               id: "s-legacy-" + (w.id || Date.now()),
-              canvasW: w.canvasW || 1080,
-              canvasH: w.canvasH || 1080,
+              canvasW: w.canvasW || w.width || 1080,
+              canvasH: w.canvasH || w.height || 1080,
               bg: w.bg || "#ffffff",
               presetId: w.presetId || matchPresetIdForSize(w.canvasW, w.canvasH),
-              json: w.json || "{}",
+              json: JSON.stringify(parseCanvasJsonSafe(w.json || w.canvasJson || w.canvas_json || w.payload_json || w.payload || w.data || "{}")),
               thumb: "",
             },
           ];
@@ -2250,6 +2281,7 @@
       0,
       Math.min(normalizedSlides.length - 1, Number.isInteger(w.currentSlideIndex) ? w.currentSlideIndex : 0)
     );
+    disposeSlideFabrics();
     loadSlideAt(currentSlideIndex, { skipCurrentSync: true });
     renderWorkList();
     toast("작업을 불러왔습니다");
@@ -2459,6 +2491,38 @@
     if (!m || m.length < 3) return "#ffffff";
     const to = (n) => ("0" + parseInt(n, 10).toString(16)).slice(-2);
     return "#" + to(m[0]) + to(m[1]) + to(m[2]);
+  }
+
+  function parseCanvasJsonSafe(value) {
+    function resolve(v, depth) {
+      if (depth > 4 || v == null) return null;
+      if (typeof v === "string") {
+        try {
+          return resolve(JSON.parse(v), depth + 1);
+        } catch {
+          return null;
+        }
+      }
+      if (typeof v !== "object") return null;
+      if (Array.isArray(v.objects)) return v;
+      const keys = [
+        "json",
+        "canvasJson",
+        "canvas_json",
+        "payload_json",
+        "payload",
+        "data",
+        "state",
+        "fabric",
+        "content",
+      ];
+      for (let i = 0; i < keys.length; i++) {
+        const nested = resolve(v[keys[i]], depth + 1);
+        if (nested) return nested;
+      }
+      return null;
+    }
+    return resolve(value, 0) || { objects: [] };
   }
 
   function resetHistoryFromCanvas() {
@@ -5004,7 +5068,7 @@
           enableRetinaScaling: false,
           backgroundColor: slide.bg || "#ffffff",
         });
-        sc.loadFromJSON(JSON.parse(slide.json || "{}"), () => {
+        sc.loadFromJSON(parseCanvasJsonSafe(slide ? slide.json : null), () => {
           try {
             sc.renderAll();
             const data = sc.toDataURL({
@@ -5515,9 +5579,15 @@
     document.getElementById("cloud-anon").value = cloudCfg.anon || "";
     initCloudClient();
     if (cloudClient) {
-      refreshCloudSession();
+      refreshCloudSession().then(() => {
+        if (cloudUser) return cloudPullAll();
+      });
       cloudClient.auth.onAuthStateChange(() => {
-        refreshCloudSession();
+        refreshCloudSession().then(() => {
+          if (cloudUser) return cloudPullAll();
+          renderWorkList();
+          renderWorkBrowser();
+        });
       });
     }
     else setCloudStatus("클라우드 미연결");
