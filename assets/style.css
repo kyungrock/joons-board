@@ -1448,7 +1448,8 @@ body {
 
 .canvas-card-viewport {
   flex-shrink: 0;
-  overflow: hidden;
+  /* hidden이면 scale·클립으로 캔버스 밖(잘린 영역)은 포인터를 못 받아 영역 선택이 끊깁니다 */
+  overflow: visible;
   line-height: 0;
   border-radius: 2px;
   box-shadow: var(--shadow-lg);

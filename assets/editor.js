@@ -7,6 +7,7 @@
   const MY_FILE_KEY = "joons_my_files_v1";
   const MY_FILE_FOLDER_KEY = "joons_my_file_folders_v1";
   const CLOUD_CFG_KEY = "joons_cloud_cfg_v1";
+  const CLOUD_STORAGE_BUCKET = "joons-assets";
   const DEFAULT_FOLDER_ID = "folder-all";
   const EMPTY_THUMB =
     "data:image/svg+xml;utf8," +
@@ -404,9 +405,12 @@
   let cloudClient = null;
   let cloudUser = null;
   let cloudWorksCache = [];
+  let cloudStorageWarned = false;
   let slides = [];
   let currentSlideIndex = 0;
   let slideFabrics = [];
+  /** 영역 선택: 캔버스 밖(뷰포트·잘린 영역)에서 시작한 드래그 */
+  let zoneSelSession = null;
   let domListenersAttached = false;
   let closeRailSlidePanel = null;
   const thumbGenerating = new Set();
@@ -517,14 +521,15 @@
     { v: "ui-monospace, monospace", l: "고정폭" },
   ];
 
-  function toast(msg) {
+  function toast(msg, durationMs) {
     const el = document.getElementById("toast");
     el.textContent = msg;
     el.hidden = false;
     clearTimeout(toast._t);
+    const ms = typeof durationMs === "number" && durationMs > 0 ? durationMs : 2200;
     toast._t = setTimeout(() => {
       el.hidden = true;
-    }, 2200);
+    }, ms);
   }
 
   function getWorks() {
@@ -603,7 +608,10 @@
           changed = true;
         }
       }
-      if (changed) setMyFiles(list);
+      if (changed) {
+        const idSave = setMyFiles(list);
+        if (!idSave.ok) console.warn("setMyFiles (id repair) failed", idSave.error);
+      }
       return list;
     } catch {
       return [];
@@ -611,7 +619,13 @@
   }
 
   function setMyFiles(arr) {
-    localStorage.setItem(MY_FILE_KEY, JSON.stringify(arr));
+    try {
+      localStorage.setItem(MY_FILE_KEY, JSON.stringify(arr));
+      return { ok: true, error: null };
+    } catch (err) {
+      console.error("Failed to save my files to localStorage:", err);
+      return { ok: false, error: err };
+    }
   }
 
   function renderMyFileFolders() {
@@ -672,7 +686,14 @@
       const main = document.createElement("button");
       main.type = "button";
       main.className = "my-file-item-main";
-      main.innerHTML = `<img src="${f.dataUrl}" alt="${f.name || "file"}" loading="lazy" /><span>${f.name || "파일"}</span>`;
+      const thumb = document.createElement("img");
+      thumb.loading = "lazy";
+      thumb.alt = f.name || "file";
+      thumb.src = String(f.dataUrl || "");
+      const cap = document.createElement("span");
+      cap.textContent = f.name || "파일";
+      main.appendChild(thumb);
+      main.appendChild(cap);
       main.addEventListener("click", () => addMyFileToCanvas(f.dataUrl));
 
       const del = document.createElement("button");
@@ -686,7 +707,15 @@
         if (!confirm("\ub0b4 \ud30c\uc77c\uc5d0\uc11c \uc774 \uc774\ubbf8\uc9c0\ub97c \uc0ad\uc81c\ud560\uae4c\uc694?")) return;
         const removedId = f.id;
         const next = getMyFiles().filter((x) => x.id !== removedId);
-        setMyFiles(next);
+        const delSave = setMyFiles(next);
+        if (!delSave.ok) {
+          toast(
+            isLocalQuotaError(delSave.error)
+              ? "\uc800\uc7a5 \uacf5\uac04\uc774 \ubd80\uc871\ud574 \uc0ad\uc81c\ub97c \ubc18\uc601\ud558\uc9c0 \ubabb\ud588\uc5b4\uc694."
+              : "\ub0b4 \ud30c\uc77c \ubaa9\ub85d\uc744 \uc800\uc7a5\ud558\uc9c0 \ubabb\ud588\uc5b4\uc694."
+          );
+          return;
+        }
         renderMyFileFolders();
         renderMyFiles();
         toast("\uc0ad\uc81c\ud588\uc2b5\ub2c8\ub2e4");
@@ -721,18 +750,84 @@
     toast("새 폴더를 만들었습니다");
   }
 
-  function handleMyFileUpload(fileList) {
-    const files = Array.from(fileList || []);
-    if (!files.length) return;
-    const current = getMyFiles();
-    let pending = files.length;
-    files.forEach((file) => {
-      if (!file.type || !file.type.startsWith("image/")) {
-        pending--;
+  function isLikelyImageFile(file) {
+    if (!file) return false;
+    const t = String(file.type || "").toLowerCase();
+    if (t.startsWith("image/")) return true;
+    const n = String(file.name || "").toLowerCase();
+    return /\.(png|jpe?g|gif|webp|bmp|ico|heic|heif)$/i.test(n);
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error || new Error("read failed"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /** 브라우저 저장 한도를 줄이기 위해 해상도를 줄이고 JPEG/PNG로 다시 인코딩합니다. */
+  function packImageDataUrlForMyFiles(dataUrl, file) {
+    return new Promise((resolve) => {
+      if (!dataUrl || dataUrl.length < 80 || !dataUrl.startsWith("data:image")) {
+        resolve(dataUrl);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
+      const t = String(file.type || "").toLowerCase();
+      const name = String(file.name || "").toLowerCase();
+      if (t === "image/svg+xml" || name.endsWith(".svg")) {
+        resolve(dataUrl);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxSide = 2048;
+          let w = img.naturalWidth || img.width;
+          let h = img.naturalHeight || img.height;
+          if (!w || !h) {
+            resolve(dataUrl);
+            return;
+          }
+          const sc = Math.min(1, maxSide / Math.max(w, h));
+          const tw = Math.max(1, Math.round(w * sc));
+          const th = Math.max(1, Math.round(h * sc));
+          const canvas = document.createElement("canvas");
+          canvas.width = tw;
+          canvas.height = th;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, tw, th);
+          const asPng = t === "image/png" || name.endsWith(".png");
+          const out = asPng ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.86);
+          resolve(out || dataUrl);
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  async function handleMyFileUpload(fileList) {
+    const picked = Array.from(fileList || []);
+    const files = picked.filter(isLikelyImageFile);
+    if (!files.length) {
+      if (picked.length) toast("이미지로 인식된 파일이 없어요. 형식·파일명을 확인해 주세요.");
+      return;
+    }
+    const current = getMyFiles();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        let dataUrl = await readFileAsDataUrl(file);
+        dataUrl = await packImageDataUrlForMyFiles(dataUrl, file);
+        if (!dataUrl) continue;
         current.push({
           id:
             typeof crypto !== "undefined" && crypto.randomUUID
@@ -740,36 +835,41 @@
               : "mf-" + Date.now() + "-" + Math.random().toString(16).slice(2),
           folderId: myFileFolderId || DEFAULT_FOLDER_ID,
           name: file.name || "image",
-          dataUrl: String(reader.result || ""),
+          dataUrl,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
-        pending--;
-        if (pending <= 0) {
-          setMyFiles(current);
-          renderMyFileFolders();
-          renderMyFiles();
-          toast("내 파일에 업로드했습니다");
-        }
-      };
-      reader.onerror = () => {
-        pending--;
-        if (pending <= 0) {
-          setMyFiles(current);
-          renderMyFileFolders();
-          renderMyFiles();
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch {
+        toast("파일을 읽지 못했습니다: " + (file.name || ""));
+      }
+    }
+    const saved = setMyFiles(current);
+    if (!saved.ok) {
+      toast(
+        isLocalQuotaError(saved.error)
+          ? "브라우저 저장 한도가 찼어요. 내 파일 목록을 줄이거나 더 작은 사진을 올려 주세요."
+          : "내 파일 목록을 저장하지 못했어요."
+      );
+      return;
+    }
+    renderMyFileFolders();
+    renderMyFiles();
+    if (cloudClient && cloudUser) {
+      const sync = await cloudSaveMyFiles(true);
+      if (sync && sync.ok === false) {
+        toast("내 파일은 이 기기에 저장했으나 클라우드 동기화에 실패했습니다. ‘클라우드 저장’을 다시 눌러 주세요.");
+        return;
+      }
+    }
+    toast(files.length === 1 ? "내 파일에 업로드했습니다" : `내 파일에 ${files.length}장 업로드했습니다`);
   }
 
   function initMyFilesPanel() {
     const up = document.getElementById("my-file-upload");
     const addFolderBtn = document.getElementById("my-file-new-folder");
     if (up) {
-      up.addEventListener("change", (e) => {
-        handleMyFileUpload(e.target.files);
+      up.addEventListener("change", async (e) => {
+        await handleMyFileUpload(e.target.files);
         e.target.value = "";
       });
     }
@@ -876,6 +976,115 @@
       email: (document.getElementById("cloud-email").value || "").trim(),
       password: document.getElementById("cloud-password").value || "",
     };
+  }
+
+  function isDataUrl(value) {
+    return typeof value === "string" && value.startsWith("data:");
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    const comma = dataUrl.indexOf(",");
+    if (comma < 0) return null;
+    const header = dataUrl.slice(0, comma);
+    const body = dataUrl.slice(comma + 1);
+    const m = header.match(/^data:([^;]+);base64$/i);
+    if (!m) return null;
+    try {
+      const mime = m[1] || "application/octet-stream";
+      const bin = atob(body);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    } catch {
+      return null;
+    }
+  }
+
+  function extFromMime(mime) {
+    const m = String(mime || "").toLowerCase();
+    if (m.includes("png")) return "png";
+    if (m.includes("jpeg") || m.includes("jpg")) return "jpg";
+    if (m.includes("webp")) return "webp";
+    if (m.includes("gif")) return "gif";
+    if (m.includes("svg")) return "svg";
+    return "bin";
+  }
+
+  function makeStoragePath(prefix, ext) {
+    return `${cloudUser.id}/${prefix}/${Date.now()}-${Math.random().toString(16).slice(2, 10)}.${ext}`;
+  }
+
+  async function uploadDataUrlToCloudStorage(dataUrl, prefix, cacheMap) {
+    if (!isDataUrl(dataUrl) || !cloudClient || !cloudUser) return dataUrl;
+    if (cacheMap && cacheMap.has(dataUrl)) return cacheMap.get(dataUrl);
+    const blob = dataUrlToBlob(dataUrl);
+    if (!blob) return dataUrl;
+    const ext = extFromMime(blob.type);
+    const path = makeStoragePath(prefix, ext);
+    const { error: uploadErr } = await cloudClient.storage
+      .from(CLOUD_STORAGE_BUCKET)
+      .upload(path, blob, { upsert: true, contentType: blob.type || "application/octet-stream" });
+    if (uploadErr) {
+      if (!cloudStorageWarned) {
+        cloudStorageWarned = true;
+        toast("클라우드 파일 버킷 업로드 실패: 기존 방식으로 저장합니다 (버킷/권한 확인)");
+      }
+      return dataUrl;
+    }
+    const { data } = cloudClient.storage.from(CLOUD_STORAGE_BUCKET).getPublicUrl(path);
+    const publicUrl = data && data.publicUrl ? data.publicUrl : dataUrl;
+    if (cacheMap) cacheMap.set(dataUrl, publicUrl);
+    return publicUrl;
+  }
+
+  async function externalizeCanvasJsonImages(jsonValue, prefix, cacheMap) {
+    let obj = null;
+    if (typeof jsonValue === "string") {
+      try {
+        obj = JSON.parse(jsonValue);
+      } catch {
+        return jsonValue || "{}";
+      }
+    } else if (jsonValue && typeof jsonValue === "object") {
+      obj = jsonValue;
+    } else {
+      return "{}";
+    }
+    const stack = [obj];
+    while (stack.length) {
+      const cur = stack.pop();
+      if (!cur || typeof cur !== "object") continue;
+      if (Array.isArray(cur)) {
+        for (let i = 0; i < cur.length; i++) stack.push(cur[i]);
+        continue;
+      }
+      if (cur.type === "image" && isDataUrl(cur.src)) {
+        cur.src = await uploadDataUrlToCloudStorage(cur.src, prefix, cacheMap);
+      } else if (isDataUrl(cur.src)) {
+        cur.src = await uploadDataUrlToCloudStorage(cur.src, prefix, cacheMap);
+      }
+      const keys = Object.keys(cur);
+      for (let i = 0; i < keys.length; i++) stack.push(cur[keys[i]]);
+    }
+    try {
+      return JSON.stringify(obj);
+    } catch {
+      return typeof jsonValue === "string" ? jsonValue : "{}";
+    }
+  }
+
+  async function buildCloudPayload(payload) {
+    const cloned = JSON.parse(JSON.stringify(payload));
+    const cacheMap = new Map();
+    cloned.json = await externalizeCanvasJsonImages(cloned.json, "project-images", cacheMap);
+    if (Array.isArray(cloned.slides)) {
+      for (let i = 0; i < cloned.slides.length; i++) {
+        const s = cloned.slides[i];
+        if (!s) continue;
+        s.json = await externalizeCanvasJsonImages(s.json, "project-images", cacheMap);
+      }
+    }
+    return cloned;
   }
 
   function getPayloadFromCurrentState() {
@@ -1033,19 +1242,20 @@
       if (!silent) toast("클라우드 로그인 후 저장 가능합니다");
       return;
     }
+    const cloudPayload = await buildCloudPayload(payload);
     const row = {
       user_id: cloudUser.id,
-      project_id: payload.id,
-      name: payload.name,
-      folder_id: payload.folderId || DEFAULT_FOLDER_ID,
-      payload_json: payload,
+      project_id: cloudPayload.id,
+      name: cloudPayload.name,
+      folder_id: cloudPayload.folderId || DEFAULT_FOLDER_ID,
+      payload_json: cloudPayload,
       updated_at: new Date().toISOString(),
     };
     const { error: selErr, data: found } = await cloudClient
       .from("joons_projects")
       .select("id")
       .eq("user_id", cloudUser.id)
-      .eq("project_id", payload.id)
+      .eq("project_id", cloudPayload.id)
       .limit(1);
     if (selErr) {
       if (!silent) toast("클라우드 저장 실패: 테이블/권한 설정 확인");
@@ -1095,7 +1305,7 @@
   async function cloudSaveMyFiles(silent) {
     if (!cloudClient || !cloudUser) {
       if (!silent) toast("클라우드 로그인 후 파일 동기화 가능합니다");
-      return;
+      return { ok: false, reason: "no_session" };
     }
     const folders = getMyFileFolders();
     const files = getMyFiles();
@@ -1105,15 +1315,25 @@
       name: f.name,
       updated_at: new Date().toISOString(),
     }));
-    const assetRows = files.map((x) => ({
-      user_id: cloudUser.id,
-      asset_id: x.id,
-      folder_id: x.folderId || DEFAULT_FOLDER_ID,
-      name: x.name || "image",
-      data_url: x.dataUrl || "",
-      created_at: new Date(x.createdAt || Date.now()).toISOString(),
-      updated_at: new Date(x.updatedAt || x.createdAt || Date.now()).toISOString(),
-    }));
+    const cacheMap = new Map();
+    const assetRows = [];
+    for (let i = 0; i < files.length; i++) {
+      const x = files[i];
+      const uploadedUrl = await uploadDataUrlToCloudStorage(
+        x.dataUrl || "",
+        "my-files",
+        cacheMap
+      );
+      assetRows.push({
+        user_id: cloudUser.id,
+        asset_id: x.id,
+        folder_id: x.folderId || DEFAULT_FOLDER_ID,
+        name: x.name || "image",
+        data_url: uploadedUrl || "",
+        created_at: new Date(x.createdAt || Date.now()).toISOString(),
+        updated_at: new Date(x.updatedAt || x.createdAt || Date.now()).toISOString(),
+      });
+    }
 
     if (folderRows.length) {
       const { error } = await cloudClient
@@ -1121,7 +1341,7 @@
         .upsert(folderRows, { onConflict: "user_id,folder_id" });
       if (error) {
         if (!silent) toast("파일 폴더 동기화 실패: " + error.message);
-        return;
+        return { ok: false, error };
       }
     }
     if (assetRows.length) {
@@ -1130,10 +1350,11 @@
         .upsert(assetRows, { onConflict: "user_id,asset_id" });
       if (error) {
         if (!silent) toast("업로드 파일 동기화 실패: " + error.message);
-        return;
+        return { ok: false, error };
       }
     }
     if (!silent) toast("내 파일을 클라우드에 동기화했습니다");
+    return { ok: true };
   }
 
   async function cloudPullMyFiles(silent) {
@@ -1191,7 +1412,17 @@
         updatedAt: x.updated_at ? Date.parse(x.updated_at) : Date.now(),
       });
     });
-    setMyFiles(Array.from(fileMap.values()));
+    const pullSave = setMyFiles(Array.from(fileMap.values()));
+    if (!pullSave.ok) {
+      if (!silent) {
+        toast(
+          isLocalQuotaError(pullSave.error)
+            ? "\ube0c\ub77c\uc6b0\uc800 \uc800\uc7a5 \ud55c\ub3c4\uac00 \ucc28 \ud074\ub77c\uc6b0\ub4dc \ud30c\uc77c\uc744 \ubaa8\ub450 \ub123\uc9c0 \ubabb\ud588\uc5b4\uc694. \ub0b4 \ud30c\uc77c\uc744 \uc9c0\uc6b0\uace0 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694."
+            : "\ud074\ub77c\uc6b0\ub4dc \ud30c\uc77c\uc744 \ub85c\uceec\uc5d0 \uc800\uc7a5\ud558\uc9c0 \ubabb\ud588\uc5b4\uc694."
+        );
+      }
+      return;
+    }
     renderMyFileFolders();
     renderMyFiles();
     if (!silent) toast(`클라우드 파일 ${(assetRes.data || []).length}개를 반영했습니다`);
@@ -1529,6 +1760,164 @@
       handlePlacementClick(p);
       setTool("select");
     });
+  }
+
+  function normalizeMarqueeRect(x1, y1, x2, y2) {
+    const left = Math.min(x1, x2);
+    const top = Math.min(y1, y2);
+    const width = Math.abs(x2 - x1);
+    const height = Math.abs(y2 - y1);
+    return { left, top, width, height };
+  }
+
+  function marqueeRectsIntersect(sel, br) {
+    const ax2 = sel.left + sel.width;
+    const ay2 = sel.top + sel.height;
+    const bx2 = br.left + br.width;
+    const by2 = br.top + br.height;
+    return !(ax2 < br.left || bx2 < sel.left || ay2 < br.top || by2 < sel.top);
+  }
+
+  function collectObjectsInMarqueeRect(fc, rect) {
+    const targets = [];
+    fc.getObjects().forEach((obj) => {
+      if (!obj || obj.visible === false || obj.selectable === false) return;
+      obj.setCoords();
+      const br = obj.getBoundingRect(true, true);
+      if (br && marqueeRectsIntersect(rect, br)) targets.push(obj);
+    });
+    return targets;
+  }
+
+  let _marqueeOverlayEl = null;
+  function getMarqueeOverlayEl() {
+    if (_marqueeOverlayEl) return _marqueeOverlayEl;
+    const el = document.createElement("div");
+    el.id = "editor-marquee-overlay";
+    el.setAttribute("aria-hidden", "true");
+    el.style.cssText =
+      "position:fixed;display:none;pointer-events:none;" +
+      "border:1px dashed #6366f1;background:rgba(99,102,241,0.09);z-index:9999;" +
+      "box-sizing:border-box;";
+    document.body.appendChild(el);
+    _marqueeOverlayEl = el;
+    return el;
+  }
+
+  function hideMarqueeOverlay() {
+    if (_marqueeOverlayEl) _marqueeOverlayEl.style.display = "none";
+  }
+
+  function showMarqueeOverlayForFabricRect(fc, x1, y1, x2, y2) {
+    const r = normalizeMarqueeRect(x1, y1, x2, y2);
+    const el = getMarqueeOverlayEl();
+    const bb = fc.lowerCanvasEl.getBoundingClientRect();
+    const cw = fc.getWidth();
+    const ch = fc.getHeight();
+    if (!cw || !ch) return;
+    const sx = bb.width / cw;
+    const sy = bb.height / ch;
+    el.style.display = "block";
+    el.style.left = bb.left + r.left * sx + "px";
+    el.style.top = bb.top + r.top * sy + "px";
+    el.style.width = Math.max(0, r.width * sx) + "px";
+    el.style.height = Math.max(0, r.height * sy) + "px";
+  }
+
+  function shouldIgnoreZoneSelectionPointerDown(e) {
+    const t = e.target;
+    if (!t || !t.closest) return true;
+    if (e.pointerType === "mouse" && e.button !== 0) return true;
+    if (t.closest(".canvas-slide-rail")) return true;
+    if (t.closest("a[href]")) return true;
+    const tag = (t.tagName || "").toUpperCase();
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "BUTTON" || tag === "LABEL") return true;
+    if (t.isContentEditable) return true;
+    return false;
+  }
+
+  function detachZoneSelDocumentListeners() {
+    document.removeEventListener("pointermove", onZoneSelPointerMove, true);
+    document.removeEventListener("pointerup", onZoneSelPointerUp, true);
+    document.removeEventListener("pointercancel", onZoneSelPointerUp, true);
+  }
+
+  function onZoneSelPointerMove(e) {
+    if (!zoneSelSession || e.pointerId !== zoneSelSession.pid) return;
+    const s = zoneSelSession;
+    const dx = e.clientX - s.cx;
+    const dy = e.clientY - s.cy;
+    if (!s.dragging && dx * dx + dy * dy > 16) s.dragging = true;
+    if (s.dragging) {
+      const p = s.fc.getPointer(e);
+      showMarqueeOverlayForFabricRect(s.fc, s.sx, s.sy, p.x, p.y);
+      e.preventDefault();
+    }
+  }
+
+  function onZoneSelPointerUp(e) {
+    if (!zoneSelSession || e.pointerId !== zoneSelSession.pid) return;
+    detachZoneSelDocumentListeners();
+    const s = zoneSelSession;
+    zoneSelSession = null;
+    hideMarqueeOverlay();
+    const fc = s.fc;
+    const p = fc.getPointer(e);
+    const dx = e.clientX - s.cx;
+    const dy = e.clientY - s.cy;
+    const dragged = s.dragging || dx * dx + dy * dy > 16;
+    if (!dragged) {
+      if (s.hit) fc.setActiveObject(s.hit);
+      else fc.discardActiveObject();
+      fc.requestRenderAll();
+      flushHistory();
+      updateInspector();
+      updateLayers();
+      return;
+    }
+    const rect = normalizeMarqueeRect(s.sx, s.sy, p.x, p.y);
+    const objs = collectObjectsInMarqueeRect(fc, rect);
+    if (!objs.length) {
+      fc.discardActiveObject();
+    } else if (objs.length === 1) {
+      fc.setActiveObject(objs[0]);
+    } else {
+      fc.setActiveObject(new fabric.ActiveSelection(objs, { canvas: fc }));
+    }
+    fc.requestRenderAll();
+    flushHistory();
+    updateInspector();
+    updateLayers();
+  }
+
+  function onViewportPointerDown(e) {
+    if (currentTool !== "select") return;
+    if (zoneSelSession) return;
+    const fc = slideFabrics[currentSlideIndex];
+    if (!fc || !fc.lowerCanvasEl) return;
+    if (shouldIgnoreZoneSelectionPointerDown(e)) return;
+    const slideWrap = e.target.closest(".canvas-slide");
+    if (slideWrap) {
+      const idx = parseInt(slideWrap.getAttribute("data-slide-index"), 10);
+      if (!Number.isFinite(idx) || idx !== currentSlideIndex) return;
+    }
+    if (e.target === fc.upperCanvasEl || e.target === fc.lowerCanvasEl) return;
+    if (zoneSelSession) return;
+    const hit = typeof fc.findTarget === "function" ? fc.findTarget(e) : null;
+    const p = fc.getPointer(e);
+    zoneSelSession = {
+      fc,
+      sx: p.x,
+      sy: p.y,
+      hit,
+      pid: e.pointerId,
+      cx: e.clientX,
+      cy: e.clientY,
+      dragging: false,
+    };
+    document.addEventListener("pointermove", onZoneSelPointerMove, true);
+    document.addEventListener("pointerup", onZoneSelPointerUp, true);
+    document.addEventListener("pointercancel", onZoneSelPointerUp, true);
   }
 
   function rebuildSlideFabricStack(onDone) {
@@ -2824,6 +3213,27 @@
     updateInspector();
   }
 
+  function fontWeightToInspectorNumber(fw) {
+    if (fw == null || fw === "") return 400;
+    const s = String(fw).toLowerCase();
+    if (s === "normal") return 400;
+    if (s === "bold") return 700;
+    const n = parseInt(String(fw), 10);
+    if (!Number.isNaN(n)) return Math.max(100, Math.min(900, n));
+    return 400;
+  }
+
+  function syncFontWeightInspectorInputs(o) {
+    if (!o || !(o.type === "i-text" || o.type === "text" || o.type === "textbox")) return;
+    const wn = fontWeightToInspectorNumber(o.fontWeight);
+    const wEl = document.getElementById("ins-font-weight");
+    const wNum = document.getElementById("ins-font-weight-num");
+    const wVal = document.getElementById("ins-font-weight-val");
+    if (wEl) wEl.value = String(wn);
+    if (wNum) wNum.value = String(wn);
+    if (wVal) wVal.textContent = String(wn);
+  }
+
   function syncTextStyleToolbar(o) {
     const wrap = document.getElementById("ins-text-para-wrap");
     if (!wrap || wrap.hidden) return;
@@ -2870,6 +3280,8 @@
     if (fxWrap) fxWrap.hidden = !isText;
     document.getElementById("ins-font-wrap").hidden = !isText;
     document.getElementById("ins-size-wrap").hidden = !isText;
+    const fwWrap = document.getElementById("ins-font-weight-wrap");
+    if (fwWrap) fwWrap.hidden = !isText;
     document.getElementById("ins-stroke-wrap").hidden = isText;
     document.getElementById("ins-stroke-w-wrap").hidden = isText;
 
@@ -2880,6 +3292,7 @@
       document.getElementById("ins-font-size").value = String(fs);
       document.getElementById("ins-font-size-num").value = String(fs);
       document.getElementById("ins-size-val").textContent = fs + "px";
+      syncFontWeightInspectorInputs(o);
       const q = (document.getElementById("ins-font-search").value || "").trim();
       renderFontPreviewList(q);
       syncTextStyleToolbar(o);
@@ -5332,16 +5745,106 @@
         scheduleHistory();
       }
     });
+
+    function commitInsFontSizeNum() {
+      const o = getActiveTarget();
+      const el = document.getElementById("ins-font-size-num");
+      if (!(o && (o.type === "i-text" || o.type === "text" || o.type === "textbox")) || !el) return;
+      const raw = String(el.value).trim();
+      let v = Math.round(o.fontSize || 48);
+      if (raw !== "" && !Number.isNaN(parseInt(raw, 10))) {
+        v = Math.max(8, Math.min(200, parseInt(raw, 10)));
+      }
+      el.value = String(v);
+      document.getElementById("ins-font-size").value = String(v);
+      document.getElementById("ins-size-val").textContent = v + "px";
+      o.set("fontSize", v);
+      canvas.requestRenderAll();
+      scheduleHistory();
+    }
     document.getElementById("ins-font-size-num").addEventListener("input", (e) => {
       const o = getActiveTarget();
       if (!(o && (o.type === "i-text" || o.type === "text" || o.type === "textbox"))) return;
-      const v = Math.max(8, Math.min(200, parseInt(e.target.value, 10) || 8));
-      e.target.value = String(v);
+      const raw = String(e.target.value).trim();
+      if (raw === "") return;
+      const n = parseInt(raw, 10);
+      if (Number.isNaN(n)) return;
+      if (n < 8 || n > 200) return;
+      const v = n;
       document.getElementById("ins-font-size").value = String(v);
       o.set("fontSize", v);
       document.getElementById("ins-size-val").textContent = v + "px";
       canvas.requestRenderAll();
       scheduleHistory();
+    });
+    document.getElementById("ins-font-size-num").addEventListener("blur", () => {
+      commitInsFontSizeNum();
+    });
+    document.getElementById("ins-font-size-num").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.target.blur();
+      }
+    });
+
+    function applyFontWeightFromSlider(v) {
+      const o = getActiveTarget();
+      if (!(o && (o.type === "i-text" || o.type === "text" || o.type === "textbox"))) return;
+      const n = Math.max(100, Math.min(900, Math.round(Number(v) || 400)));
+      o.set("fontWeight", String(n));
+      document.getElementById("ins-font-weight").value = String(n);
+      document.getElementById("ins-font-weight-num").value = String(n);
+      const pill = document.getElementById("ins-font-weight-val");
+      if (pill) pill.textContent = String(n);
+      canvas.requestRenderAll();
+      scheduleHistory();
+      syncTextStyleToolbar(o);
+    }
+    function commitInsFontWeightNum() {
+      const o = getActiveTarget();
+      const el = document.getElementById("ins-font-weight-num");
+      if (!(o && (o.type === "i-text" || o.type === "text" || o.type === "textbox")) || !el) return;
+      const raw = String(el.value).trim();
+      let n = fontWeightToInspectorNumber(o.fontWeight);
+      if (raw !== "" && !Number.isNaN(parseInt(raw, 10))) {
+        n = Math.max(100, Math.min(900, Math.round(parseInt(raw, 10))));
+      }
+      o.set("fontWeight", String(n));
+      document.getElementById("ins-font-weight").value = String(n);
+      el.value = String(n);
+      const pill = document.getElementById("ins-font-weight-val");
+      if (pill) pill.textContent = String(n);
+      canvas.requestRenderAll();
+      scheduleHistory();
+      syncTextStyleToolbar(o);
+    }
+    document.getElementById("ins-font-weight").addEventListener("input", (e) => {
+      applyFontWeightFromSlider(e.target.value);
+    });
+    document.getElementById("ins-font-weight-num").addEventListener("input", (e) => {
+      const o = getActiveTarget();
+      if (!(o && (o.type === "i-text" || o.type === "text" || o.type === "textbox"))) return;
+      const raw = String(e.target.value).trim();
+      if (raw === "") return;
+      const n = parseInt(raw, 10);
+      if (Number.isNaN(n)) return;
+      if (n < 100 || n > 900) return;
+      o.set("fontWeight", String(n));
+      document.getElementById("ins-font-weight").value = String(n);
+      const pill = document.getElementById("ins-font-weight-val");
+      if (pill) pill.textContent = String(n);
+      canvas.requestRenderAll();
+      scheduleHistory();
+      syncTextStyleToolbar(o);
+    });
+    document.getElementById("ins-font-weight-num").addEventListener("blur", () => {
+      commitInsFontWeightNum();
+    });
+    document.getElementById("ins-font-weight-num").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.target.blur();
+      }
     });
 
     document.querySelectorAll("[data-text-align]").forEach((btn) => {
@@ -5364,7 +5867,7 @@
           const fw = o.fontWeight;
           const n = parseInt(fw, 10);
           const on = fw === "bold" || (!Number.isNaN(n) && n >= 700);
-          o.set("fontWeight", on ? "normal" : "bold");
+          o.set("fontWeight", on ? "400" : "700");
         } else if (k === "italic") {
           o.set("fontStyle", o.fontStyle === "italic" ? "normal" : "italic");
         } else if (k === "underline") {
@@ -5375,6 +5878,7 @@
         canvas.requestRenderAll();
         flushHistory();
         syncTextStyleToolbar(o);
+        if (k === "bold") syncFontWeightInspectorInputs(o);
       });
     });
 
@@ -5817,6 +6321,11 @@
     });
 
     bindInspector();
+
+    const editorCanvasZone = document.getElementById("viewport");
+    if (editorCanvasZone) {
+      editorCanvasZone.addEventListener("pointerdown", onViewportPointerDown, true);
+    }
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
