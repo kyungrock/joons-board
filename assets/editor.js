@@ -6306,17 +6306,22 @@
     const htmlUrl = (urlInput.getAttribute("value") || "").trim();
     const htmlAnon = (anonInput.getAttribute("value") || "").trim();
     const cloudCfg = getCloudCfg();
-    let url = (cloudCfg.url || htmlUrl || "").trim();
-    let anon = (cloudCfg.anon || htmlAnon || "").trim();
-    // 삭제/정지된 프로젝트·빈 설정이면 HTML 기본값으로 교체
+    // GitHub Pages 등에서 localStorage에 죽은 URL/잘못된 Key가 남아
+    // "연결됨"처럼 보여도 가입/로그인이 실패하는 경우가 있어 HTML 기본값을 우선한다.
+    let url = (htmlUrl || cloudCfg.url || "").trim();
+    let anon = (htmlAnon || cloudCfg.anon || "").trim();
     if (
       !url ||
       !anon ||
       url.indexOf("lvyrijgtsntbgkpwjavl") >= 0 ||
-      url.indexOf("lvyrjlgtsntbgkpwjavl") >= 0
+      url.indexOf("lvyrjlgtsntbgkpwjavl") >= 0 ||
+      (htmlUrl && url !== htmlUrl) ||
+      (htmlAnon && anon !== htmlAnon)
     ) {
-      url = htmlUrl;
-      anon = htmlAnon;
+      if (htmlUrl && htmlAnon) {
+        url = htmlUrl;
+        anon = htmlAnon;
+      }
     }
     urlInput.value = url;
     anonInput.value = anon;
