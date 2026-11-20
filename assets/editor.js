@@ -1332,7 +1332,12 @@
         toast(netMsg, 4500);
         return;
       }
-      if (msg.includes("rate limit") || msg.includes("already") || msg.includes("registered")) {
+      if (
+        msg.includes("rate limit") ||
+        msg.includes("already") ||
+        msg.includes("registered") ||
+        msg.includes("user already")
+      ) {
         if (await tryCloudLoginAfterSignUp(email, password)) {
           toast("이미 가입된 계정이라 로그인했습니다");
           return;
@@ -1343,10 +1348,17 @@
           toast(limitMsg, 4000);
           return;
         }
+        cloudAuthModalMode = "login";
+        const title = document.getElementById("cloud-auth-title");
+        const submit = document.getElementById("cloud-auth-submit");
+        const hint = document.getElementById("cloud-auth-hint");
+        if (title) title.textContent = "로그인";
+        if (submit) submit.textContent = "로그인";
+        if (hint) hint.textContent = "이미 가입된 이메일입니다. 같은 비밀번호로 로그인하세요.";
         const existsMsg =
-          "이미 가입된 이메일입니다. 로그인하거나, 대시보드 Users에서 이메일 확인(Confirm) 후 다시 시도하세요";
+          "이미 가입된 이메일입니다. 회원가입 대신 로그인을 눌러주세요. (비밀번호가 다르면 대시보드 Users에서 재설정)";
         setCloudAuthStatus(existsMsg);
-        toast(existsMsg, 5000);
+        toast(existsMsg, 5500);
         return;
       }
       setCloudAuthStatus("회원가입 실패: " + error.message);
