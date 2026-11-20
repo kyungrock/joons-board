@@ -972,10 +972,105 @@
   }
 
   function getCloudEmailPass() {
+    const modalEmail = document.getElementById("cloud-auth-email");
+    const modalPass = document.getElementById("cloud-auth-password");
+    const railEmail = document.getElementById("cloud-email");
+    const railPass = document.getElementById("cloud-password");
+    const emailFromModal = modalEmail ? (modalEmail.value || "").trim() : "";
+    const passFromModal = modalPass ? modalPass.value || "" : "";
     return {
-      email: (document.getElementById("cloud-email").value || "").trim(),
-      password: document.getElementById("cloud-password").value || "",
+      email: emailFromModal || (railEmail ? (railEmail.value || "").trim() : ""),
+      password: passFromModal || (railPass ? railPass.value || "" : ""),
     };
+  }
+
+  let cloudAuthModalMode = "signup";
+
+  function ensureCloudClientFromInputs() {
+    if (cloudClient) return cloudClient;
+    const url = (document.getElementById("cloud-url").value || "").trim();
+    const anon = (document.getElementById("cloud-anon").value || "").trim();
+    if (!url || !anon) return null;
+    setCloudCfg({ url, anon });
+    return initCloudClient();
+  }
+
+  function setCloudAuthStatus(msg) {
+    const el = document.getElementById("cloud-auth-status");
+    if (el) el.textContent = msg || "";
+  }
+
+  function openCloudDetailsPanel() {
+    const box = document.querySelector("details.cloud-box");
+    if (box) box.open = true;
+  }
+
+  function openCloudAuthModal(mode) {
+    cloudAuthModalMode = mode === "login" ? "login" : "signup";
+    const modal = document.getElementById("cloud-auth-modal");
+    const title = document.getElementById("cloud-auth-title");
+    const hint = document.getElementById("cloud-auth-hint");
+    const submit = document.getElementById("cloud-auth-submit");
+    const emailEl = document.getElementById("cloud-auth-email");
+    const passEl = document.getElementById("cloud-auth-password");
+    const railEmail = document.getElementById("cloud-email");
+    const railPass = document.getElementById("cloud-password");
+
+    ensureCloudClientFromInputs();
+    openCloudDetailsPanel();
+
+    // 모달 HTML이 없는 배포본 대비: 레일 입력으로 바로 진행
+    if (!modal || !title || !submit || !emailEl || !passEl) {
+      const filled =
+        railEmail &&
+        railPass &&
+        (railEmail.value || "").trim() &&
+        (railPass.value || "");
+      if (filled) {
+        if (cloudAuthModalMode === "login") cloudLogin();
+        else cloudSignUp();
+      } else {
+        if (railEmail) railEmail.focus();
+        toast("이메일/비밀번호를 입력한 뒤 다시 눌러주세요", 3000);
+      }
+      return;
+    }
+
+    if (railEmail && !emailEl.value) emailEl.value = railEmail.value || "";
+    if (railPass && !passEl.value) passEl.value = railPass.value || "";
+
+    if (cloudAuthModalMode === "login") {
+      title.textContent = "로그인";
+      if (hint) hint.textContent = "가입한 이메일과 비밀번호로 로그인하세요.";
+      submit.textContent = "로그인";
+    } else {
+      title.textContent = "회원가입";
+      if (hint) hint.textContent = "이메일과 비밀번호를 입력한 뒤 가입하세요.";
+      submit.textContent = "회원가입";
+    }
+    setCloudAuthStatus(
+      cloudClient ? "클라우드 연결됨" : "클라우드 미연결 — URL/Key 확인 후 클라우드 연결을 해주세요"
+    );
+    modal.hidden = false;
+    setTimeout(() => emailEl.focus(), 0);
+
+    // 이미 입력값이 있으면 모달을 연 뒤 바로 시도
+    if ((emailEl.value || "").trim() && (passEl.value || "")) {
+      submitCloudAuthModal();
+    }
+  }
+
+  function closeCloudAuthModal() {
+    const modal = document.getElementById("cloud-auth-modal");
+    if (modal) modal.hidden = true;
+  }
+
+  function syncCloudAuthFieldsToRail() {
+    const { email, password } = getCloudEmailPass();
+    const railEmail = document.getElementById("cloud-email");
+    const railPass = document.getElementById("cloud-password");
+    if (railEmail) railEmail.value = email;
+    if (railPass) railPass.value = password;
   }
 
   function isDataUrl(value) {
@@ -1176,54 +1271,157 @@
     toast("클라우드 연결 설정을 저장했습니다");
   }
 
+  async function tryCloudLoginAfterSignUp(email, password) {
+    try {
+      const loginTry = await cloudClient.auth.signInWithPassword({ email, password });
+      if (!loginTry.error) {
+        await refreshCloudSession();
+        if (cloudUser) {
+          await cloudPullAll();
+          setCloudAuthStatus("로그인됨");
+          closeCloudAuthModal();
+          toast("로그인했습니다");
+          return true;
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   async function cloudSignUp() {
+    syncCloudAuthFieldsToRail();
+    ensureCloudClientFromInputs();
     if (!cloudClient) {
-      toast("먼저 클라우드 연결을 해주세요");
+      const msg = "먼저 클라우드 연결을 해주세요";
+      setCloudAuthStatus(msg);
+      toast(msg);
       return;
     }
     const { email, password } = getCloudEmailPass();
     if (!email || !password) {
-      toast("이메일/비밀번호를 입력해주세요");
+      const msg = "이메일/비밀번호를 입력해주세요";
+      setCloudAuthStatus(msg);
+      toast(msg);
+      openCloudAuthModal("signup");
       return;
     }
-    const { error } = await cloudClient.auth.signUp({ email, password });
+    if (password.length < 6) {
+      const msg = "비밀번호는 6자 이상이어야 합니다";
+      setCloudAuthStatus(msg);
+      toast(msg);
+      return;
+    }
+    setCloudAuthStatus("가입 요청 중...");
+    let error = null;
+    let data = null;
+    try {
+      const res = await cloudClient.auth.signUp({ email, password });
+      error = res.error || null;
+      data = res.data || null;
+    } catch (e) {
+      error = { message: e && e.message ? e.message : "Failed to fetch" };
+    }
     if (error) {
       const msg = String(error.message || "").toLowerCase();
-      if (msg.includes("rate limit")) {
-        const loginTry = await cloudClient.auth.signInWithPassword({ email, password });
-        if (!loginTry.error) {
-          await refreshCloudSession();
-          toast("가입 제한으로 로그인으로 전환했습니다");
-          return;
-        }
-        toast("가입 요청 제한 상태입니다. 잠시 후 다시 시도하거나 로그인 버튼을 눌러보세요");
+      if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("fetch")) {
+        const netMsg =
+          "회원가입 실패: 서버에 연결할 수 없습니다. Supabase 프로젝트가 Active인지, URL/Key가 맞는지 확인해주세요";
+        setCloudAuthStatus(netMsg);
+        toast(netMsg, 4500);
         return;
       }
-      toast("회원가입 실패: " + error.message);
+      if (msg.includes("rate limit") || msg.includes("already") || msg.includes("registered")) {
+        if (await tryCloudLoginAfterSignUp(email, password)) {
+          toast("이미 가입된 계정이라 로그인했습니다");
+          return;
+        }
+        if (msg.includes("rate limit")) {
+          const limitMsg = "가입 요청 제한 상태입니다. 잠시 후 다시 시도하거나 로그인해보세요";
+          setCloudAuthStatus(limitMsg);
+          toast(limitMsg, 4000);
+          return;
+        }
+        const existsMsg =
+          "이미 가입된 이메일입니다. 로그인하거나, 대시보드 Users에서 이메일 확인(Confirm) 후 다시 시도하세요";
+        setCloudAuthStatus(existsMsg);
+        toast(existsMsg, 5000);
+        return;
+      }
+      setCloudAuthStatus("회원가입 실패: " + error.message);
+      toast("회원가입 실패: " + error.message, 4000);
       return;
     }
     await refreshCloudSession();
-    toast("회원가입 요청 완료 (이메일 인증 필요할 수 있음)");
+    if (cloudUser) {
+      await cloudPullAll();
+      setCloudAuthStatus("가입 후 로그인됨");
+      closeCloudAuthModal();
+      toast("회원가입 후 로그인되었습니다");
+      return;
+    }
+    // 이메일 인증이 켜져 있으면 session이 비어 있음 → 로그인 한 번 더 시도
+    if (await tryCloudLoginAfterSignUp(email, password)) {
+      toast("회원가입 후 로그인되었습니다");
+      return;
+    }
+    const needConfirm =
+      "가입 요청은 접수됐습니다. 이 프로젝트는 이메일 인증이 필요합니다. 메일 확인 후 로그인하거나, Supabase Authentication → Providers → Email에서 Confirm email을 끄세요";
+    setCloudAuthStatus(needConfirm);
+    toast(needConfirm, 7000);
+    if (data && data.user && data.user.id) {
+      setCloudStatus("클라우드 연결됨 (이메일 인증 후 로그인)");
+    }
   }
 
   async function cloudLogin() {
+    syncCloudAuthFieldsToRail();
+    ensureCloudClientFromInputs();
     if (!cloudClient) {
-      toast("먼저 클라우드 연결을 해주세요");
+      const msg = "먼저 클라우드 연결을 해주세요";
+      setCloudAuthStatus(msg);
+      toast(msg);
       return;
     }
     const { email, password } = getCloudEmailPass();
     if (!email || !password) {
-      toast("이메일/비밀번호를 입력해주세요");
+      const msg = "이메일/비밀번호를 입력해주세요";
+      setCloudAuthStatus(msg);
+      toast(msg);
       return;
     }
-    const { error } = await cloudClient.auth.signInWithPassword({ email, password });
+    setCloudAuthStatus("로그인 중...");
+    let error = null;
+    try {
+      const res = await cloudClient.auth.signInWithPassword({ email, password });
+      error = res.error || null;
+    } catch (e) {
+      error = { message: e && e.message ? e.message : "Failed to fetch" };
+    }
     if (error) {
+      const msg = String(error.message || "").toLowerCase();
+      if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("fetch")) {
+        const netMsg =
+          "로그인 실패: 서버에 연결할 수 없습니다. Supabase URL/Key와 프로젝트 상태(Active)를 확인해주세요";
+        setCloudAuthStatus(netMsg);
+        toast(netMsg, 4500);
+        return;
+      }
+      setCloudAuthStatus("로그인 실패: " + error.message);
       toast("로그인 실패: " + error.message);
       return;
     }
     await refreshCloudSession();
     await cloudPullAll();
+    setCloudAuthStatus("로그인됨");
+    closeCloudAuthModal();
     toast("로그인했습니다");
+  }
+
+  async function submitCloudAuthModal() {
+    if (cloudAuthModalMode === "login") await cloudLogin();
+    else await cloudSignUp();
   }
 
   async function cloudLogout() {
@@ -6103,9 +6301,26 @@
   function init() {
     initTheme();
     document.getElementById("btn-theme").addEventListener("click", toggleTheme);
+    const urlInput = document.getElementById("cloud-url");
+    const anonInput = document.getElementById("cloud-anon");
+    const htmlUrl = (urlInput.getAttribute("value") || "").trim();
+    const htmlAnon = (anonInput.getAttribute("value") || "").trim();
     const cloudCfg = getCloudCfg();
-    document.getElementById("cloud-url").value = cloudCfg.url || "";
-    document.getElementById("cloud-anon").value = cloudCfg.anon || "";
+    let url = (cloudCfg.url || htmlUrl || "").trim();
+    let anon = (cloudCfg.anon || htmlAnon || "").trim();
+    // 삭제/정지된 프로젝트·빈 설정이면 HTML 기본값으로 교체
+    if (
+      !url ||
+      !anon ||
+      url.indexOf("lvyrijgtsntbgkpwjavl") >= 0 ||
+      url.indexOf("lvyrjlgtsntbgkpwjavl") >= 0
+    ) {
+      url = htmlUrl;
+      anon = htmlAnon;
+    }
+    urlInput.value = url;
+    anonInput.value = anon;
+    if (url && anon) setCloudCfg({ url, anon });
     initCloudClient();
     if (cloudClient) {
       refreshCloudSession().then(() => {
@@ -6264,9 +6479,26 @@
     document.getElementById("btn-slide-move-next").addEventListener("click", () => moveSlideOrder(1));
     document.getElementById("btn-apply-slide-size").addEventListener("click", applyCustomSlideSize);
     document.getElementById("cloud-connect").addEventListener("click", connectCloud);
-    document.getElementById("cloud-signup").addEventListener("click", cloudSignUp);
-    document.getElementById("cloud-login").addEventListener("click", cloudLogin);
+    document.getElementById("cloud-signup").addEventListener("click", () => openCloudAuthModal("signup"));
+    document.getElementById("cloud-login").addEventListener("click", () => openCloudAuthModal("login"));
     document.getElementById("cloud-logout").addEventListener("click", cloudLogout);
+    const cloudAuthSubmit = document.getElementById("cloud-auth-submit");
+    const cloudAuthCancel = document.getElementById("cloud-auth-cancel");
+    const cloudAuthClose = document.getElementById("cloud-auth-close");
+    const cloudAuthX = document.getElementById("cloud-auth-x");
+    const cloudAuthPassword = document.getElementById("cloud-auth-password");
+    if (cloudAuthSubmit) cloudAuthSubmit.addEventListener("click", submitCloudAuthModal);
+    if (cloudAuthCancel) cloudAuthCancel.addEventListener("click", closeCloudAuthModal);
+    if (cloudAuthClose) cloudAuthClose.addEventListener("click", closeCloudAuthModal);
+    if (cloudAuthX) cloudAuthX.addEventListener("click", closeCloudAuthModal);
+    if (cloudAuthPassword) {
+      cloudAuthPassword.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          submitCloudAuthModal();
+        }
+      });
+    }
     document.getElementById("cloud-save-now").addEventListener("click", cloudSaveCurrent);
     document.getElementById("cloud-pull").addEventListener("click", cloudPullAll);
     document.getElementById("btn-open-work-browser").addEventListener("click", openWorkBrowser);
